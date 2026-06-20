@@ -10,7 +10,7 @@
 import { useMemo } from 'react';
 import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf } from './classic.js';
 import {
-  ORDER6, HEXC, RING_CELLS, homeCells, baseRect, cellOf as hxCellOf, PLATE, HUB, THICK,
+  ORDER6, HEXC, RING_CELLS, homeCells, yardTriangle, yardSlots, cellOf as hxCellOf, PLATE, HUB, THICK,
 } from './hexGeo.js';
 
 const ALL_COLORS = { ...HEX, ...HEXC };
@@ -165,21 +165,26 @@ function buildHex(active) {
       ];
     });
   });
-  const bases = ORDER6.map((color) => {
-    const b = baseRect(color), on = active.has(color), R = b.size / 2;
+  // triangular home yards (apex inward) with 4 token slots — like a real board
+  const yards = ORDER6.map((color) => {
+    const on = active.has(color);
+    const slots = yardSlots(color);
     return (
-      <g key={`b${color}`}>
-        <circle cx={b.cx} cy={b.cy} r={R} fill={on ? HEXC[color] : 'rgba(255,255,255,0.05)'} stroke="rgba(255,255,255,0.22)" strokeWidth="0.35" />
-        <circle cx={b.cx} cy={b.cy} r={R * 0.72} fill={on ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.06)'} />
-        {[0, 1, 2, 3].map((i) => {
-          const sx = b.cx + (i % 2 ? 1 : -1) * R * 0.38, sy = b.cy + (i < 2 ? -1 : 1) * R * 0.38;
-          return <circle key={i} cx={sx} cy={sy} r={R * 0.2} fill={on ? '#fff' : 'rgba(255,255,255,0.1)'} stroke={on ? HEXC[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.35" />;
-        })}
+      <g key={`y${color}`}>
+        <polygon points={yardTriangle(color)}
+          fill={on ? `url(#base-${color})` : 'rgba(255,255,255,0.05)'}
+          stroke="rgba(0,0,0,0.3)" strokeWidth="0.4" strokeLinejoin="round" />
+        {slots.map((s, i) => (
+          <g key={i}>
+            <circle cx={s.x} cy={s.y} r="2.4" fill={on ? '#fbf7ec' : 'rgba(255,255,255,0.08)'} stroke="rgba(0,0,0,0.25)" strokeWidth="0.3" />
+            <circle cx={s.x} cy={s.y} r="1.3" fill={on ? `url(#base-${color})` : 'transparent'} />
+          </g>
+        ))}
       </g>
     );
   });
 
-  // centre: six coloured triangles meeting at a trophy hub (like a real 6-player board)
+  // centre: six coloured triangles meeting at a die hub
   const HR = 12.7, d2r = (d) => (d * Math.PI) / 180;
   const center = (
     <g>
@@ -188,13 +193,13 @@ function buildHex(active) {
         const x0 = 50 + HR * Math.cos(d2r(a0)), y0 = 50 + HR * Math.sin(d2r(a0));
         const x1 = 50 + HR * Math.cos(d2r(a1)), y1 = 50 + HR * Math.sin(d2r(a1));
         return <polygon key={color} points={`50,50 ${x0.toFixed(2)},${y0.toFixed(2)} ${x1.toFixed(2)},${y1.toFixed(2)}`}
-          fill={active.has(color) ? HEXC[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(0,0,0,0.3)" strokeWidth="0.25" />;
+          fill={active.has(color) ? `url(#base-${color})` : 'rgba(255,255,255,0.06)'} stroke="rgba(0,0,0,0.3)" strokeWidth="0.25" />;
       })}
-      <circle cx="50" cy="50" r="4.8" fill="#15161f" stroke="rgba(255,255,255,0.3)" strokeWidth="0.4" />
-      <text x="50" y="51.9" fontSize="5.2" textAnchor="middle">🏆</text>
+      <rect x="45.5" y="45.5" width="9" height="9" rx="2" fill="#16161f" stroke="rgba(255,255,255,0.3)" strokeWidth="0.4" />
+      <circle cx="50" cy="50" r="1.1" fill="#fff" />
     </g>
   );
-  return <>{ring}{homes}{center}{bases}</>;
+  return <>{ring}{homes}{center}{yards}</>;
 }
 
 function HexSVG({ players, activeColor, movable, onToken }) {

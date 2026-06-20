@@ -166,6 +166,8 @@ function OnlineLudo({ room, onExit }) {
 }
 
 const LUDO_ORDER = ['red', 'green', 'yellow', 'blue'];
+const HEX_ORDER = ['red', 'green', 'yellow', 'blue', 'purple', 'orange'];
+const paletteFor = (count) => (count >= 5 ? HEX_ORDER : LUDO_ORDER);
 
 function SoloLudo() {
   const [config, setConfig] = useState(null); // { color, count }
@@ -174,32 +176,34 @@ function SoloLudo() {
 }
 
 function LudoSetup({ onStart }) {
-  const [color, setColor] = useState('red');
   const [count, setCount] = useState(4);
+  const [color, setColor] = useState('red');
+  const palette = paletteFor(count);
+  useEffect(() => { if (!palette.includes(color)) setColor(palette[0]); }, [count]); // eslint-disable-line
   return (
     <div className="max-w-md mx-auto mt-6">
       <GlassPanel glow="rgba(123,97,255,0.3)" className="space-y-5">
         <h2 className="font-display text-xl font-bold">Solo vs bots</h2>
         <div>
-          <div className="text-sm text-white/70 mb-2">Choose your colour</div>
-          <div className="grid grid-cols-4 gap-2">
-            {LUDO_ORDER.map((c) => (
-              <button key={c} onClick={() => setColor(c)}
-                className="py-3 rounded-xl capitalize text-sm font-bold transition"
-                style={{
-                  background: HEX[c], color: '#16161c',
-                  outline: color === c ? '3px solid #fff' : '3px solid transparent',
-                  transform: color === c ? 'scale(1.05)' : 'none',
-                  boxShadow: color === c ? `0 0 18px ${HEX[c]}` : 'none',
-                }}>{c}</button>
+          <div className="text-sm text-white/70 mb-2">Players <span className="text-white/40">(5–6 = hexagonal board)</span></div>
+          <div className="grid grid-cols-5 gap-2">
+            {[2, 3, 4, 5, 6].map((n) => (
+              <button key={n} onClick={() => setCount(n)} className={`view-toggle-btn ${count === n ? 'active' : ''}`}>{n}</button>
             ))}
           </div>
         </div>
         <div>
-          <div className="text-sm text-white/70 mb-2">Players</div>
-          <div className="grid grid-cols-3 gap-2">
-            {[2, 3, 4].map((n) => (
-              <button key={n} onClick={() => setCount(n)} className={`view-toggle-btn ${count === n ? 'active' : ''}`}>{n}</button>
+          <div className="text-sm text-white/70 mb-2">Choose your colour</div>
+          <div className={`grid gap-2 ${palette.length > 4 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+            {palette.map((c) => (
+              <button key={c} onClick={() => setColor(c)}
+                className="py-3 rounded-xl capitalize text-sm font-bold transition"
+                style={{
+                  background: HEXC[c], color: '#16161c',
+                  outline: color === c ? '3px solid #fff' : '3px solid transparent',
+                  transform: color === c ? 'scale(1.05)' : 'none',
+                  boxShadow: color === c ? `0 0 18px ${HEXC[c]}` : 'none',
+                }}>{c}</button>
             ))}
           </div>
         </div>
@@ -210,12 +214,12 @@ function LudoSetup({ onStart }) {
 }
 
 function Game({ config, onExit }) {
-  const mode = 'square';
-  const COLORS = HEX;
+  const mode = config.count >= 5 ? 'hex' : 'square';
+  const COLORS = mode === 'hex' ? HEXC : HEX;
   const myColor = config.color;
   const colors = useMemo(() => {
-    const rest = LUDO_ORDER.filter((c) => c !== myColor);
-    return [myColor, ...rest].slice(0, config.count);
+    const order = paletteFor(config.count);
+    return [myColor, ...order.filter((c) => c !== myColor)].slice(0, config.count);
   }, [config]); // eslint-disable-line
 
   const gameRef = useRef(core.createGame(mode, colors));

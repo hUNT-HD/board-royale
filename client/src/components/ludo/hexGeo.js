@@ -81,10 +81,30 @@ export const baseRect = (color) => {
   const b = basePos(color);
   return { x: b.x - BASE_SIZE / 2, y: b.y - BASE_SIZE / 2, size: BASE_SIZE, cx: b.x, cy: b.y };
 };
-export const baseSlot = (color, id) => {
-  const b = basePos(color);
-  return { x: b.x + (id % 2 ? 1 : -1) * 2.3, y: b.y + (id < 2 ? -1 : 1) * 2.3 };
-};
+
+/* --- triangular home yard (apex toward centre), like a real 6-player board --- */
+const YARD_IN = 29, YARD_OUT = R + 3.5, YARD_SPREAD = 25; // degrees
+export function yardTriangle(color) {
+  const a = edgeMidAngle(ARMI[color]);
+  const apex = polar(YARD_IN, a);
+  const b1 = polar(YARD_OUT, a - YARD_SPREAD);
+  const b2 = polar(YARD_OUT, a + YARD_SPREAD);
+  return `${apex.x.toFixed(2)},${apex.y.toFixed(2)} ${b1.x.toFixed(2)},${b1.y.toFixed(2)} ${b2.x.toFixed(2)},${b2.y.toFixed(2)}`;
+}
+export function yardSlots(color) {
+  const a = edgeMidAngle(ARMI[color]);
+  const pa = d2r(a + 90);
+  const px = Math.cos(pa), py = Math.sin(pa);
+  const rows = [{ r: YARD_OUT - 8, s: 5 }, { r: YARD_IN + 10, s: 3 }];
+  const out = [];
+  for (const row of rows) {
+    const b = polar(row.r, a);
+    out.push({ x: b.x - px * row.s, y: b.y - py * row.s });
+    out.push({ x: b.x + px * row.s, y: b.y + py * row.s });
+  }
+  return out; // 4 slots
+}
+export const baseSlot = (color, id) => yardSlots(color)[id] || polar(BASE_DIST, edgeMidAngle(ARMI[color]));
 
 /** Token centre for any (color, rel) — bound to exact cell centres. */
 export function cellOf(color, rel, id) {
