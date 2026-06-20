@@ -66,17 +66,17 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
     if (mode === 'hex') {
       RING_CELLS.forEach((o) => {
         const lit = o.startColor && active.has(o.startColor);
-        const hex = lit ? HEX[o.startColor] : o.star ? '#cfd3e0' : '#e9ebf2';
+        const hex = lit ? HEXC[o.startColor] : o.star ? '#cfd3e0' : '#e9ebf2';
         addTile((o.cx - 50) * HS, (o.cy - 50) * HS, o.w * HS, o.h * HS,
           tileMat(hex, lit ? 0.5 : 0), -o.angle * Math.PI / 180);
       });
       ORDER6.forEach((color) => {
         const on = active.has(color);
         homeCells(color).forEach((o) => addTile((o.cx - 50) * HS, (o.cy - 50) * HS, o.w * HS, o.h * HS,
-          on ? tileMat(HEX[color], 0.45) : tileMat('#3a3d4d', 0), -o.angle * Math.PI / 180));
+          on ? tileMat(HEXC[color], 0.45) : tileMat('#3a3d4d', 0), -o.angle * Math.PI / 180));
         const b = baseRect(color);
         const bm = new THREE.Mesh(new THREE.BoxGeometry(b.size * HS, 0.35, b.size * HS),
-          on ? tileMat(HEX[color], 0.4) : new THREE.MeshStandardMaterial({ color: 0x20222e, roughness: 0.7, transparent: true, opacity: 0.5 }));
+          on ? tileMat(HEXC[color], 0.4) : new THREE.MeshStandardMaterial({ color: 0x20222e, roughness: 0.7, transparent: true, opacity: 0.5 }));
         bm.position.set((b.cx - 50) * HS, 0.06, (b.cy - 50) * HS); scene.add(bm);
       });
       const hub = new THREE.Mesh(new THREE.CylinderGeometry(11 * HS / Math.cos(Math.PI / 6), 11 * HS / Math.cos(Math.PI / 6), 0.3, 6),

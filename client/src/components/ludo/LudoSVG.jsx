@@ -106,7 +106,7 @@ function SquareSVG({ players, activeColor, movable, onToken }) {
 function buildHex(active) {
   const ring = RING_CELLS.map((o) => {
     const lit = o.startColor && active.has(o.startColor);
-    const fill = lit ? HEX[o.startColor] : o.star ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.13)';
+    const fill = lit ? HEXC[o.startColor] : o.star ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.13)';
     return (
       <rect key={`r${o.g}`} x={o.cx - o.w / 2} y={o.cy - o.h / 2} width={o.w} height={o.h} rx="0.7"
         fill={fill} stroke={lit ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)'} strokeWidth="0.2"
@@ -116,18 +116,18 @@ function buildHex(active) {
   const homes = ORDER6.flatMap((color) =>
     homeCells(color).map((o, k) => (
       <rect key={`h${color}${k}`} x={o.cx - o.w / 2} y={o.cy - o.h / 2} width={o.w} height={o.h} rx="0.7"
-        fill={active.has(color) ? HEX[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(255,255,255,0.14)" strokeWidth="0.2"
+        fill={active.has(color) ? HEXC[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(255,255,255,0.14)" strokeWidth="0.2"
         transform={`rotate(${o.angle} ${o.cx} ${o.cy})`} />
     )));
   const bases = ORDER6.map((color) => {
     const b = baseRect(color), on = active.has(color);
     return (
       <g key={`b${color}`}>
-        <rect x={b.x} y={b.y} width={b.size} height={b.size} rx="1.5" fill={on ? HEX[color] : 'rgba(255,255,255,0.05)'} stroke="rgba(255,255,255,0.16)" strokeWidth="0.3" />
+        <rect x={b.x} y={b.y} width={b.size} height={b.size} rx="1.5" fill={on ? HEXC[color] : 'rgba(255,255,255,0.05)'} stroke="rgba(255,255,255,0.16)" strokeWidth="0.3" />
         <rect x={b.x + 1.4} y={b.y + 1.4} width={b.size - 2.8} height={b.size - 2.8} rx="1" fill={on ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.06)'} />
         {[0, 1, 2, 3].map((i) => {
           const sx = b.cx + (i % 2 ? 1 : -1) * 2.1, sy = b.cy + (i < 2 ? -1 : 1) * 2.1;
-          return <circle key={i} cx={sx} cy={sy} r="1.5" fill={on ? '#fff' : 'rgba(255,255,255,0.1)'} stroke={on ? HEX[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.3" />;
+          return <circle key={i} cx={sx} cy={sy} r="1.5" fill={on ? '#fff' : 'rgba(255,255,255,0.1)'} stroke={on ? HEXC[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.3" />;
         })}
       </g>
     );
