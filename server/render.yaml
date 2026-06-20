@@ -1,0 +1,19 @@
+# Render Blueprint — one-click deploy for the Socket.io game server.
+# In Render: New + → Blueprint → point at the repo. Render reads this file.
+# (Railway/Fly.io work too — see DEPLOYMENT.md.)
+services:
+  - type: web
+    name: board-royale-server
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: CLIENT_ORIGIN
+        # Set this to your Vercel domain after the client is deployed,
+        # e.g. https://board-royale.vercel.app  (locks down CORS).
+        sync: false
