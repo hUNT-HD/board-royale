@@ -48,6 +48,17 @@ function Defs() {
         <stop offset="0%" stopColor="#ffffff" />
         <stop offset="100%" stopColor="#f3ead4" />
       </radialGradient>
+      <radialGradient id="surface" cx="38%" cy="30%" r="90%">
+        <stop offset="0%" stopColor="#f3ecdb" />
+        <stop offset="100%" stopColor="#ddd3bd" />
+      </radialGradient>
+      <radialGradient id="vignette" cx="50%" cy="44%" r="65%">
+        <stop offset="60%" stopColor="#000000" stopOpacity="0" />
+        <stop offset="100%" stopColor="#000000" stopOpacity="0.22" />
+      </radialGradient>
+      <filter id="softSh" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="0.1" stdDeviation="0.12" floodColor="#000000" floodOpacity="0.35" />
+      </filter>
     </defs>
   );
 }
@@ -95,29 +106,34 @@ function buildSquare(active) {
   const bases = Object.entries(CORNER).map(([color, [cb, rb]]) => {
     const on = active.has(color);
     return (
-      <g key={color}>
-        <rect x={cb + 0.12} y={rb + 0.12} width="5.76" height="5.76" rx="1.1"
-          fill={on ? `url(#base-${color})` : 'rgba(255,255,255,0.05)'} stroke="rgba(0,0,0,0.28)" strokeWidth="0.08" />
-        <rect x={cb + 0.95} y={rb + 0.95} width="4.1" height="4.1" rx="0.7"
-          fill={on ? '#fbf7ec' : 'rgba(255,255,255,0.07)'} stroke="rgba(0,0,0,0.16)" strokeWidth="0.05" />
+      <g key={color} filter="url(#softSh)">
+        <rect x={cb + 0.12} y={rb + 0.12} width="5.76" height="5.76" rx="1.2"
+          fill={on ? `url(#base-${color})` : '#ccc5b1'} stroke="rgba(0,0,0,0.3)" strokeWidth="0.09" />
+        <rect x={cb + 0.95} y={rb + 0.95} width="4.1" height="4.1" rx="0.75"
+          fill={on ? '#fcf9f0' : '#e3ddcc'} stroke="rgba(0,0,0,0.18)" strokeWidth="0.06" />
         {BASE_SLOTS[color].map(([r, c], i) => (
           <g key={i}>
-            <circle cx={c + 0.5} cy={r + 0.5} r="0.42" fill={on ? `url(#base-${color})` : 'rgba(255,255,255,0.08)'}
-              stroke={on ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.18)'} strokeWidth="0.06" />
-            <circle cx={c + 0.5} cy={r + 0.5} r="0.24" fill={on ? 'rgba(255,255,255,0.55)' : 'transparent'} />
+            <circle cx={c + 0.5} cy={r + 0.5} r="0.44" fill={on ? `url(#base-${color})` : '#cec7b4'}
+              stroke="rgba(0,0,0,0.28)" strokeWidth="0.07" />
+            <ellipse cx={c + 0.36} cy={r + 0.36} rx="0.16" ry="0.11" fill="rgba(255,255,255,0.75)" />
           </g>
         ))}
       </g>
     );
   });
-  // centre — four colour triangles into a star
+  // centre — four colour triangles meeting at a clean emblem
   const tri = [['green', '6,6 9,6 7.5,7.5'], ['yellow', '9,6 9,9 7.5,7.5'], ['blue', '9,9 6,9 7.5,7.5'], ['red', '6,9 6,6 7.5,7.5']]
     .map(([color, pts]) => (
-      <polygon key={color} points={pts} fill={active.has(color) ? `url(#base-${color})` : 'rgba(255,255,255,0.07)'}
-        stroke="rgba(0,0,0,0.25)" strokeWidth="0.06" />
+      <polygon key={color} points={pts} fill={active.has(color) ? `url(#base-${color})` : '#d6cfbd'}
+        stroke="rgba(0,0,0,0.22)" strokeWidth="0.06" />
     ));
-  const star = <text x="7.5" y="7.85" fontSize="1.5" textAnchor="middle" fill="rgba(255,255,255,0.9)">★</text>;
-  return <>{cells}{bases}{tri}{star}</>;
+  const emblem = (
+    <g filter="url(#softSh)">
+      <circle cx="7.5" cy="7.5" r="0.82" fill="#fcf9f0" stroke="rgba(0,0,0,0.25)" strokeWidth="0.06" />
+      <text x="7.5" y="7.84" fontSize="0.85" textAnchor="middle" fill="#c79a32">★</text>
+    </g>
+  );
+  return <>{cells}{tri}{bases}{emblem}</>;
 }
 
 function SquareSVG({ players, activeColor, movable, onToken }) {
@@ -127,9 +143,10 @@ function SquareSVG({ players, activeColor, movable, onToken }) {
     <svg className="ludo-svg" viewBox="-0.7 -0.7 16.4 16.4" role="img" aria-label="Ludo board">
       <Defs />
       <rect x="-0.7" y="-0.7" width="16.4" height="16.4" rx="1.1" fill="url(#boardBg)" stroke="rgba(255,255,255,0.12)" strokeWidth="0.07" />
-      <rect x="-0.05" y="-0.05" width="15.1" height="15.1" rx="0.5" fill="#e9e0ca" stroke="rgba(0,0,0,0.3)" strokeWidth="0.06" />
+      <rect x="-0.05" y="-0.05" width="15.1" height="15.1" rx="0.6" fill="url(#surface)" stroke="rgba(0,0,0,0.35)" strokeWidth="0.08" />
       {board}
       <Tokens players={players} activeColor={activeColor} movable={movable} onToken={onToken} cellOf={sqCellOf} r={0.4} off={0.13} />
+      <rect x="-0.05" y="-0.05" width="15.1" height="15.1" rx="0.6" fill="url(#vignette)" pointerEvents="none" />
     </svg>
   );
 }
