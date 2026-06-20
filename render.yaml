@@ -1,0 +1,16 @@
+# Root Render Blueprint — deploys the Socket.io server from /server.
+services:
+  - type: web
+    name: board-royale-server
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: CLIENT_ORIGIN
+        # set to your Vercel URL after the client is live (or * for quick testing)
+        sync: false
