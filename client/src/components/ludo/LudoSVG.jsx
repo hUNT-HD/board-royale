@@ -10,7 +10,7 @@
 import { useMemo } from 'react';
 import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf } from './classic.js';
 import {
-  ORDER6, HEXC, RING_CELLS, homeCells, baseRect, cellOf as hxCellOf, PLATE, HUB,
+  ORDER6, HEXC, RING_CELLS, homeCells, baseRect, cellOf as hxCellOf, PLATE, HUB, THICK,
 } from './hexGeo.js';
 
 const ALL_COLORS = { ...HEX, ...HEXC };
@@ -58,12 +58,12 @@ function buildSquare(active) {
     const start = startColorAt[key], home = homeColorAt[key];
     const idx = mainIndexAt[key], star = SQ_STAR.has(idx);
     const col = (start && active.has(start) && start) || (home && active.has(home) && home);
-    const fill = col ? HEX[col] : star ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.11)';
+    const fill = col ? HEX[col] : star ? '#ffffff' : '#f3edde';
     tracks.push(
       <g key={key}>
-        <rect x={c + 0.05} y={r + 0.05} width="0.9" height="0.9" rx="0.16" fill={fill}
-          stroke={col ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.13)'} strokeWidth="0.035" />
-        {star && !col && <text x={c + 0.5} y={r + 0.72} fontSize="0.58" textAnchor="middle" fill="rgba(255,255,255,0.6)">★</text>}
+        <rect x={c + 0.04} y={r + 0.04} width="0.92" height="0.92" rx="0.14" fill={fill}
+          stroke="rgba(40,32,14,0.32)" strokeWidth="0.045" />
+        {star && !col && <text x={c + 0.5} y={r + 0.73} fontSize="0.62" textAnchor="middle" fill="rgba(50,40,20,0.55)">★</text>}
       </g>
     );
   }
@@ -72,19 +72,19 @@ function buildSquare(active) {
     return (
       <g key={color}>
         <rect x={cb + 0.1} y={rb + 0.1} width="5.8" height="5.8" rx="0.9"
-          fill={on ? HEX[color] : 'rgba(255,255,255,0.05)'} stroke="rgba(255,255,255,0.16)" strokeWidth="0.06" />
-        <rect x={cb + 1} y={rb + 1} width="4" height="4" rx="0.6" fill={on ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.06)'} />
+          fill={on ? HEX[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(0,0,0,0.25)" strokeWidth="0.07" />
+        <rect x={cb + 1} y={rb + 1} width="4" height="4" rx="0.6" fill={on ? '#fbf7ec' : 'rgba(255,255,255,0.08)'} stroke="rgba(0,0,0,0.18)" strokeWidth="0.04" />
         {BASE_SLOTS[color].map(([r, c], i) => (
-          <circle key={i} cx={c + 0.5} cy={r + 0.5} r="0.34"
-            fill={on ? '#fff' : 'rgba(255,255,255,0.10)'} stroke={on ? HEX[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.08" />
+          <circle key={i} cx={c + 0.5} cy={r + 0.5} r="0.36"
+            fill={on ? '#fff' : 'rgba(255,255,255,0.10)'} stroke={on ? HEX[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.1" />
         ))}
       </g>
     );
   });
   const tri = [['green', '6,6 9,6 7.5,7.5'], ['yellow', '9,6 9,9 7.5,7.5'], ['blue', '9,9 6,9 7.5,7.5'], ['red', '6,9 6,6 7.5,7.5']]
     .map(([color, pts]) => (
-      <polygon key={color} points={pts} fill={active.has(color) ? HEX[color] : 'rgba(255,255,255,0.05)'}
-        stroke="rgba(255,255,255,0.15)" strokeWidth="0.04" />
+      <polygon key={color} points={pts} fill={active.has(color) ? HEX[color] : 'rgba(255,255,255,0.08)'}
+        stroke="rgba(0,0,0,0.25)" strokeWidth="0.05" />
     ));
   return <>{tracks}{bases}{tri}</>;
 }
@@ -106,33 +106,63 @@ function SquareSVG({ players, activeColor, movable, onToken }) {
 function buildHex(active) {
   const ring = RING_CELLS.map((o) => {
     const lit = o.startColor && active.has(o.startColor);
-    const fill = lit ? HEXC[o.startColor] : o.star ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.13)';
+    const fill = lit ? HEXC[o.startColor] : o.star ? '#ffffff' : '#f3edde';
     return (
       <rect key={`r${o.g}`} x={o.cx - o.w / 2} y={o.cy - o.h / 2} width={o.w} height={o.h} rx="0.7"
-        fill={fill} stroke={lit ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)'} strokeWidth="0.2"
+        fill={fill} stroke="rgba(30,24,10,0.3)" strokeWidth="0.22"
         transform={`rotate(${o.angle} ${o.cx} ${o.cy})`} />
     );
   });
-  const homes = ORDER6.flatMap((color) =>
-    homeCells(color).map((o, k) => (
-      <rect key={`h${color}${k}`} x={o.cx - o.w / 2} y={o.cy - o.h / 2} width={o.w} height={o.h} rx="0.7"
-        fill={active.has(color) ? HEXC[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(255,255,255,0.14)" strokeWidth="0.2"
-        transform={`rotate(${o.angle} ${o.cx} ${o.cy})`} />
-    )));
+  // 3-wide arms: a coloured middle home lane flanked by two white track lanes
+  const homes = ORDER6.flatMap((color) => {
+    const on = active.has(color);
+    const mid = on ? HEXC[color] : 'rgba(255,255,255,0.06)';
+    return homeCells(color).flatMap((o, k) => {
+      const perp = ((o.angle + 90) * Math.PI) / 180;
+      const dx = THICK * Math.cos(perp), dy = THICK * Math.sin(perp);
+      const cell = (cx, cy, fill, key) => (
+        <rect key={key} x={cx - o.w / 2} y={cy - o.h / 2} width={o.w} height={o.h} rx="0.7"
+          fill={fill} stroke="rgba(30,24,10,0.3)" strokeWidth="0.22" transform={`rotate(${o.angle} ${cx} ${cy})`} />
+      );
+      // taper the arm near the centre (inner cells single-wide) so arms don't cross
+      if (k >= 3) return [cell(o.cx, o.cy, mid, `h${color}${k}m`)];
+      return [
+        cell(o.cx + dx, o.cy + dy, on ? '#f3edde' : 'rgba(255,255,255,0.06)', `h${color}${k}a`),
+        cell(o.cx - dx, o.cy - dy, on ? '#f3edde' : 'rgba(255,255,255,0.06)', `h${color}${k}b`),
+        cell(o.cx, o.cy, mid, `h${color}${k}m`),
+      ];
+    });
+  });
   const bases = ORDER6.map((color) => {
-    const b = baseRect(color), on = active.has(color);
+    const b = baseRect(color), on = active.has(color), R = b.size / 2;
     return (
       <g key={`b${color}`}>
-        <rect x={b.x} y={b.y} width={b.size} height={b.size} rx="1.5" fill={on ? HEXC[color] : 'rgba(255,255,255,0.05)'} stroke="rgba(255,255,255,0.16)" strokeWidth="0.3" />
-        <rect x={b.x + 1.4} y={b.y + 1.4} width={b.size - 2.8} height={b.size - 2.8} rx="1" fill={on ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.06)'} />
+        <circle cx={b.cx} cy={b.cy} r={R} fill={on ? HEXC[color] : 'rgba(255,255,255,0.05)'} stroke="rgba(255,255,255,0.22)" strokeWidth="0.35" />
+        <circle cx={b.cx} cy={b.cy} r={R * 0.72} fill={on ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.06)'} />
         {[0, 1, 2, 3].map((i) => {
-          const sx = b.cx + (i % 2 ? 1 : -1) * 2.1, sy = b.cy + (i < 2 ? -1 : 1) * 2.1;
-          return <circle key={i} cx={sx} cy={sy} r="1.5" fill={on ? '#fff' : 'rgba(255,255,255,0.1)'} stroke={on ? HEXC[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.3" />;
+          const sx = b.cx + (i % 2 ? 1 : -1) * R * 0.38, sy = b.cy + (i < 2 ? -1 : 1) * R * 0.38;
+          return <circle key={i} cx={sx} cy={sy} r={R * 0.2} fill={on ? '#fff' : 'rgba(255,255,255,0.1)'} stroke={on ? HEXC[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.35" />;
         })}
       </g>
     );
   });
-  return <>{ring}{homes}<polygon points={HUB} fill="#191a26" stroke="rgba(255,255,255,0.18)" strokeWidth="0.4" />{bases}</>;
+
+  // centre: six coloured triangles meeting at a trophy hub (like a real 6-player board)
+  const HR = 12.7, d2r = (d) => (d * Math.PI) / 180;
+  const center = (
+    <g>
+      {ORDER6.map((color, p) => {
+        const a0 = -90 + 60 * p, a1 = a0 + 60;
+        const x0 = 50 + HR * Math.cos(d2r(a0)), y0 = 50 + HR * Math.sin(d2r(a0));
+        const x1 = 50 + HR * Math.cos(d2r(a1)), y1 = 50 + HR * Math.sin(d2r(a1));
+        return <polygon key={color} points={`50,50 ${x0.toFixed(2)},${y0.toFixed(2)} ${x1.toFixed(2)},${y1.toFixed(2)}`}
+          fill={active.has(color) ? HEXC[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(0,0,0,0.3)" strokeWidth="0.25" />;
+      })}
+      <circle cx="50" cy="50" r="4.8" fill="#15161f" stroke="rgba(255,255,255,0.3)" strokeWidth="0.4" />
+      <text x="50" y="51.9" fontSize="5.2" textAnchor="middle">🏆</text>
+    </g>
+  );
+  return <>{ring}{homes}{center}{bases}</>;
 }
 
 function HexSVG({ players, activeColor, movable, onToken }) {

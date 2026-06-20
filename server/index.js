@@ -75,6 +75,11 @@ io.on('connection', (socket) => {
     socket.to(code).emit('chess:move', { move, fen });
   });
 
+  // ---- Generic host-authoritative relay (Ludo runs in the host's browser) -
+  // Clients send their intent; the room HOST applies it and broadcasts state.
+  socket.on('lobby:action', ({ code, action }) => socket.to(code).emit('lobby:action', action));
+  socket.on('lobby:state', ({ code, state }) => socket.to(code).emit('lobby:state', state));
+
   // ---- Ludo: server is authoritative -------------------------------------
   socket.on('ludo:roll', ({ code }, ack) => {
     const room = getRoom(code);

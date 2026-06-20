@@ -165,6 +165,65 @@ button, .view-toggle-btn, .ludo-svg, .ludo3d { -webkit-tap-highlight-color: tran
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
 /* ============================================================= *
+ *  CHESS — realistic wooden board                               *
+ * ============================================================= */
+.chess-frame {
+  display: inline-block;
+  padding: 18px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(95deg, #6e4d2e 0 5px, #66462a 5px 10px),
+    linear-gradient(135deg, #7a5736, #3a2715);
+  box-shadow: 0 36px 80px rgba(0,0,0,0.65),
+              inset 0 2px 0 rgba(255,225,180,0.25),
+              inset 0 -4px 8px rgba(0,0,0,0.5),
+              inset 0 0 0 1px rgba(0,0,0,0.3);
+}
+.chess-grid2 {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: min(86vw, 600px);
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+}
+.csq { position: relative; display: grid; place-items: center; cursor: pointer;
+  transition: filter .15s ease; }
+.csq-l { background: radial-gradient(120% 120% at 30% 20%, #f6e2c2, #ead0a8); } /* light wood */
+.csq-d { background: radial-gradient(120% 120% at 30% 20%, #c0936c, #a87b54); } /* dark wood */
+.csq:hover { filter: brightness(1.08); }
+.csq-sel { box-shadow: inset 0 0 0 4px rgba(255,205,70,0.95); filter: brightness(1.12); }
+.csq-last::before { content: ''; position: absolute; inset: 0; background: rgba(255,210,80,0.32); }
+.csq-check::before { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle, rgba(255,60,60,0.85), rgba(255,60,60,0.15) 70%, transparent); }
+.csq-legal::after {
+  content: ''; width: 30%; aspect-ratio: 1; border-radius: 50%;
+  background: rgba(30,90,30,0.4);
+}
+.csq-cap::after {
+  content: ''; position: absolute; inset: 7%; border-radius: 50%;
+  background: transparent; border: 5px solid rgba(30,90,30,0.4);
+}
+/* real vector pieces */
+.cpiece-img {
+  width: 86%; height: 86%; object-fit: contain;
+  user-select: none; pointer-events: none;
+  filter: drop-shadow(0 3px 2px rgba(0,0,0,0.35));
+  transition: transform .12s ease;
+}
+.csq:hover .cpiece-img { transform: translateY(-3px) scale(1.06); }
+.cpiece-fallback { font-size: clamp(24px, 7.4vw, 54px); line-height: 1; user-select: none; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.4)); }
+.cp-w { color: #fcfaf2; -webkit-text-stroke: 1.6px #2a2722; }
+.cp-b { color: #26262b; -webkit-text-stroke: 1.4px #050507; }
+.csq-rank, .csq-file { position: absolute; font-size: clamp(7px, 1.5vw, 11px); font-weight: 700; }
+.csq-rank { top: 2px; left: 3px; }
+.csq-file { bottom: 1px; right: 3px; }
+.csq-l .csq-rank, .csq-l .csq-file { color: #b58863; }
+.csq-d .csq-rank, .csq-d .csq-file { color: #f0d9b5; }
+
+/* ============================================================= *
  *  LUDO — hexagonal glossy 6-player board                       *
  * ============================================================= */
 .ludo-stage {
@@ -474,6 +533,31 @@ button, .view-toggle-btn, .ludo-svg, .ludo3d { -webkit-tap-highlight-color: tran
   background: linear-gradient(135deg, rgba(123,97,255,0.9), rgba(0,180,255,0.85));
   box-shadow: 0 4px 16px rgba(123,97,255,0.45);
 }
+
+/* Win celebration overlay */
+.win-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center;
+  background: rgba(6, 6, 12, 0.7);
+  backdrop-filter: blur(4px);
+  animation: fadeIn .25s ease;
+}
+.win-confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.win-card {
+  position: relative; text-align: center; padding: 2rem 2.4rem; max-width: 90vw;
+  animation: popIn .35s cubic-bezier(.2,.9,.3,1.2);
+}
+.win-emoji { font-size: 3.4rem; line-height: 1; margin-bottom: .4rem; filter: drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: scale(.85) translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* mute button */
+.mute-btn {
+  width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+  cursor: pointer; font-size: 1.1rem; transition: background .2s;
+}
+.mute-btn:hover { background: rgba(255,255,255,0.12); }
 
 /* Utility */
 .mono { font-variant-numeric: tabular-nums; letter-spacing: 2px; }

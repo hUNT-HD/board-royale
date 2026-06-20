@@ -8,7 +8,7 @@ import { useRoom } from '../hooks/useRoom.js';
  *   mode: 'solo' | 'online'
  */
 export default function Lobby({ game, accent, minPlayers = 2, children, onPlay }) {
-  const { room, error, create, join, start } = useRoom(game);
+  const { room, error, busy, connected, create, join, start } = useRoom(game);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [view, setView] = useState('menu'); // menu | host | guest
@@ -34,10 +34,11 @@ export default function Lobby({ game, accent, minPlayers = 2, children, onPlay }
               🤖 Solo vs AI
             </button>
             <button
-              className="btn-neon btn-ghost w-full"
-              onClick={async () => { await create(name); setView('host'); }}
+              className="btn-neon btn-ghost w-full disabled:opacity-50"
+              disabled={busy}
+              onClick={async () => { const c = await create(name); if (c) setView('host'); }}
             >
-              ➕ Create private room
+              {busy ? 'Connecting…' : '➕ Create private room'}
             </button>
             <div className="flex gap-2">
               <input
@@ -46,12 +47,17 @@ export default function Lobby({ game, accent, minPlayers = 2, children, onPlay }
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
               />
               <button
-                className="btn-neon btn-ghost"
+                className="btn-neon btn-ghost disabled:opacity-50"
+                disabled={busy || code.length < 4}
                 onClick={async () => { if (await join(code, name)) setView('guest'); }}
               >
-                Join
+                {busy ? '…' : 'Join'}
               </button>
             </div>
+            <p className="text-center text-xs text-white/40">
+              {busy ? 'Waking the server (free tier can take ~30s the first time)…'
+                : connected ? '🟢 Server connected' : '🟡 Connecting to server…'}
+            </p>
           </div>
         )}
 

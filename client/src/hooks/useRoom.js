@@ -8,9 +8,12 @@ import { ensureConnected, emitAck, socket } from '../socket.js';
 export function useRoom(game) {
   const [room, setRoom] = useState(null);
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(socket.connected);
 
   useEffect(() => {
+    // pre-connect so the free-tier server starts waking up immediately
+    ensureConnected();
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
     const onUpdate = (r) => setRoom(r);
@@ -29,27 +32,29 @@ export function useRoom(game) {
   }, []);
 
   const create = useCallback(async (name) => {
-    ensureConnected();
-    setError(null);
+    setError(null); setBusy(true);
     const res = await emitAck('room:create', { game, name });
-    if (res.error) return setError(res.error);
+    setBusy(false);
+    if (res.error) { setError(res.error); return null; }
     setRoom(res.room);
     return res.code;
   }, [game]);
 
   const join = useCallback(async (code, name) => {
-    ensureConnected();
-    setError(null);
+    setError(null); setBusy(true);
     const res = await emitAck('room:join', { code, name });
+    setBusy(false);
     if (res.error) { setError(res.error); return false; }
     setRoom(res.room);
     return true;
   }, []);
 
   const start = useCallback(async () => {
+    setBusy(true);
     const res = await emitAck('room:start', { code: room?.code });
+    setBusy(false);
     if (res.error) setError(res.error);
   }, [room]);
 
-  return { room, error, connected, create, join, start, setError };
+  return { room, error, busy, connected, create, join, start, setError };
 }
