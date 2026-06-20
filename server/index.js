@@ -18,7 +18,7 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 
 import {
-  createRoom, joinRoom, startRoom, leaveRoom, getRoom, publicRoom,
+  createRoom, joinRoom, startRoom, leaveRoom, getRoom, publicRoom, setColor,
 } from './rooms.js';
 import {
   roll, moveToken, serialize, botChooseToken, COLORS,
@@ -79,6 +79,21 @@ io.on('connection', (socket) => {
   // Clients send their intent; the room HOST applies it and broadcasts state.
   socket.on('lobby:action', ({ code, action }) => socket.to(code).emit('lobby:action', action));
   socket.on('lobby:state', ({ code, state }) => socket.to(code).emit('lobby:state', state));
+
+  // ---- Ludo colour selection (no two players share a colour) -------------
+  socket.on('room:pickColor', ({ code, color }, ack) => {
+    const { error } = setColor(code, socket.id, color);
+    if (error) return ack?.({ error });
+    ack?.({ ok: true });
+    emitRoom(code);
+  });
+
+  // ---- In-room chat (both games) -----------------------------------------
+  socket.on('chat:msg', ({ code, name, text }) => {
+    const t = (text || '').toString().slice(0, 300).trim();
+    if (!t) return;
+    io.to(code).emit('chat:msg', { name: (name || 'Player').toString().slice(0, 24), text: t, ts: Date.now() });
+  });
 
   // ---- Ludo: server is authoritative -------------------------------------
   socket.on('ludo:roll', ({ code }, ack) => {

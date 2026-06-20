@@ -3,7 +3,9 @@
  * Swap the Map for Redis to scale horizontally; the shape stays identical.
  */
 import { customAlphabet } from 'nanoid';
-import { COLORS, createGame } from './ludoLogic.js';
+import { createGame } from './ludoLogic.js';
+
+const LUDO_COLORS = ['red', 'green', 'yellow', 'blue']; // 4-player classic
 
 // Unambiguous, uppercase, human-shareable 6-char codes (no 0/O/1/I).
 const makeCode = customAlphabet('ABCDEFGHJKMNPQRSTUVWXYZ23456789', 6);
@@ -16,7 +18,7 @@ export function createRoom(game, hostSocketId, hostName) {
   let code;
   do { code = makeCode(); } while (rooms.has(code));
 
-  const maxPlayers = game === 'chess' ? 2 : 6;
+  const maxPlayers = game === 'chess' ? 2 : 4;
   const room = {
     code,
     game,            // 'chess' | 'ludo'
@@ -42,9 +44,25 @@ export function joinRoom(code, socketId, name) {
 
   const seat = room.members.length;
   const member = { socketId, name: name || `Player ${seat + 1}`, seat };
-  if (room.game === 'ludo') member.color = COLORS[seat];
+  if (room.game === 'ludo') {
+    // default to the first colour not already taken
+    member.color = LUDO_COLORS.find((c) => !room.members.some((m) => m.color === c)) || LUDO_COLORS[seat];
+  }
   room.members.push(member);
   return { room, member };
+}
+
+/** Let a Ludo player pick a colour, rejecting one another player already holds. */
+export function setColor(code, socketId, color) {
+  const room = rooms.get(code);
+  if (!room || room.game !== 'ludo') return { error: 'Not a Ludo room.' };
+  if (room.started) return { error: 'Game already started.' };
+  if (!LUDO_COLORS.includes(color)) return { error: 'Invalid colour.' };
+  if (room.members.some((m) => m.color === color && m.socketId !== socketId)) return { error: 'Colour already taken.' };
+  const me = room.members.find((m) => m.socketId === socketId);
+  if (!me) return { error: 'Not in room.' };
+  me.color = color;
+  return { room };
 }
 
 export function startRoom(code) {

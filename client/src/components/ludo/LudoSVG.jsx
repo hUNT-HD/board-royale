@@ -37,6 +37,17 @@ function Defs() {
           <stop offset="100%" stopColor={hex} stopOpacity="0" />
         </radialGradient>
       ))}
+      {Object.entries(ALL_COLORS).map(([name, hex]) => (
+        <radialGradient key={`b-${name}`} id={`base-${name}`} cx="32%" cy="26%" r="90%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
+          <stop offset="38%" stopColor={hex} />
+          <stop offset="100%" stopColor={hex} />
+        </radialGradient>
+      ))}
+      <radialGradient id="cellGloss" cx="35%" cy="25%" r="90%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="100%" stopColor="#f3ead4" />
+      </radialGradient>
     </defs>
   );
 }
@@ -47,23 +58,37 @@ const homeColorAt = {}; Object.entries(HOME).forEach(([col, cs]) => cs.forEach((
 const startColorAt = {}; Object.entries(START).forEach(([col, i]) => { const [r, c] = MAIN[i]; startColorAt[`${r},${c}`] = col; });
 const SQ_STAR = new Set([8, 21, 34, 47]);
 const CORNER = { red: [0, 0], green: [9, 0], yellow: [9, 9], blue: [0, 9] };
+const START_DIR = { red: 'right', green: 'down', yellow: 'left', blue: 'up' };
+const STAR_COLOR = {}; [8, 21, 34, 47].forEach((g) => { const co = ['red', 'green', 'yellow', 'blue'][(g - 8) / 13]; const [r, c] = MAIN[g]; STAR_COLOR[`${r},${c}`] = co; });
 const sqIsBase = (r, c) => (r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8);
 const sqIsCenter = (r, c) => r >= 6 && r <= 8 && c >= 6 && c <= 8;
 
+const arrowPts = (c, r, dir) => {
+  const x = c + 0.5, y = r + 0.5, s = 0.2;
+  return {
+    right: `${x - s},${y - s} ${x + s},${y} ${x - s},${y + s}`,
+    left: `${x + s},${y - s} ${x - s},${y} ${x + s},${y + s}`,
+    down: `${x - s},${y - s} ${x + s},${y - s} ${x},${y + s}`,
+    up: `${x - s},${y + s} ${x + s},${y + s} ${x},${y - s}`,
+  }[dir];
+};
+
 function buildSquare(active) {
-  const tracks = [];
+  const cells = [];
   for (let r = 0; r < 15; r++) for (let c = 0; c < 15; c++) {
     if (sqIsBase(r, c) || sqIsCenter(r, c)) continue;
     const key = `${r},${c}`;
     const start = startColorAt[key], home = homeColorAt[key];
-    const idx = mainIndexAt[key], star = SQ_STAR.has(idx);
+    const star = SQ_STAR.has(mainIndexAt[key]);
     const col = (start && active.has(start) && start) || (home && active.has(home) && home);
-    const fill = col ? HEX[col] : star ? '#ffffff' : '#f3edde';
-    tracks.push(
+    const fill = col ? HEX[col] : 'url(#cellGloss)';
+    cells.push(
       <g key={key}>
-        <rect x={c + 0.04} y={r + 0.04} width="0.92" height="0.92" rx="0.14" fill={fill}
-          stroke="rgba(40,32,14,0.32)" strokeWidth="0.045" />
-        {star && !col && <text x={c + 0.5} y={r + 0.73} fontSize="0.62" textAnchor="middle" fill="rgba(50,40,20,0.55)">★</text>}
+        <rect x={c + 0.06} y={r + 0.06} width="0.88" height="0.88" rx="0.16" fill={fill}
+          stroke="rgba(35,28,12,0.28)" strokeWidth="0.05" />
+        {col && start && active.has(start) && <polygon points={arrowPts(c, r, START_DIR[start])} fill="rgba(255,255,255,0.95)" />}
+        {star && !col && <text x={c + 0.5} y={r + 0.74} fontSize="0.66" textAnchor="middle"
+          fill={STAR_COLOR[key] && active.has(STAR_COLOR[key]) ? HEX[STAR_COLOR[key]] : 'rgba(60,48,24,0.5)'}>★</text>}
       </g>
     );
   }
@@ -71,33 +96,40 @@ function buildSquare(active) {
     const on = active.has(color);
     return (
       <g key={color}>
-        <rect x={cb + 0.1} y={rb + 0.1} width="5.8" height="5.8" rx="0.9"
-          fill={on ? HEX[color] : 'rgba(255,255,255,0.06)'} stroke="rgba(0,0,0,0.25)" strokeWidth="0.07" />
-        <rect x={cb + 1} y={rb + 1} width="4" height="4" rx="0.6" fill={on ? '#fbf7ec' : 'rgba(255,255,255,0.08)'} stroke="rgba(0,0,0,0.18)" strokeWidth="0.04" />
+        <rect x={cb + 0.12} y={rb + 0.12} width="5.76" height="5.76" rx="1.1"
+          fill={on ? `url(#base-${color})` : 'rgba(255,255,255,0.05)'} stroke="rgba(0,0,0,0.28)" strokeWidth="0.08" />
+        <rect x={cb + 0.95} y={rb + 0.95} width="4.1" height="4.1" rx="0.7"
+          fill={on ? '#fbf7ec' : 'rgba(255,255,255,0.07)'} stroke="rgba(0,0,0,0.16)" strokeWidth="0.05" />
         {BASE_SLOTS[color].map(([r, c], i) => (
-          <circle key={i} cx={c + 0.5} cy={r + 0.5} r="0.36"
-            fill={on ? '#fff' : 'rgba(255,255,255,0.10)'} stroke={on ? HEX[color] : 'rgba(255,255,255,0.22)'} strokeWidth="0.1" />
+          <g key={i}>
+            <circle cx={c + 0.5} cy={r + 0.5} r="0.42" fill={on ? `url(#base-${color})` : 'rgba(255,255,255,0.08)'}
+              stroke={on ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.18)'} strokeWidth="0.06" />
+            <circle cx={c + 0.5} cy={r + 0.5} r="0.24" fill={on ? 'rgba(255,255,255,0.55)' : 'transparent'} />
+          </g>
         ))}
       </g>
     );
   });
+  // centre — four colour triangles into a star
   const tri = [['green', '6,6 9,6 7.5,7.5'], ['yellow', '9,6 9,9 7.5,7.5'], ['blue', '9,9 6,9 7.5,7.5'], ['red', '6,9 6,6 7.5,7.5']]
     .map(([color, pts]) => (
-      <polygon key={color} points={pts} fill={active.has(color) ? HEX[color] : 'rgba(255,255,255,0.08)'}
-        stroke="rgba(0,0,0,0.25)" strokeWidth="0.05" />
+      <polygon key={color} points={pts} fill={active.has(color) ? `url(#base-${color})` : 'rgba(255,255,255,0.07)'}
+        stroke="rgba(0,0,0,0.25)" strokeWidth="0.06" />
     ));
-  return <>{tracks}{bases}{tri}</>;
+  const star = <text x="7.5" y="7.85" fontSize="1.5" textAnchor="middle" fill="rgba(255,255,255,0.9)">★</text>;
+  return <>{cells}{bases}{tri}{star}</>;
 }
 
 function SquareSVG({ players, activeColor, movable, onToken }) {
   const active = useMemo(() => new Set(players.map((p) => p.color)), [players.map((p) => p.color).join()]); // eslint-disable-line
   const board = useMemo(() => buildSquare(active), [[...active].sort().join()]); // eslint-disable-line
   return (
-    <svg className="ludo-svg" viewBox="0 0 15 15" role="img" aria-label="Ludo board">
+    <svg className="ludo-svg" viewBox="-0.7 -0.7 16.4 16.4" role="img" aria-label="Ludo board">
       <Defs />
-      <rect x="-0.4" y="-0.4" width="15.8" height="15.8" rx="0.8" fill="url(#boardBg)" stroke="rgba(255,255,255,0.12)" strokeWidth="0.08" />
+      <rect x="-0.7" y="-0.7" width="16.4" height="16.4" rx="1.1" fill="url(#boardBg)" stroke="rgba(255,255,255,0.12)" strokeWidth="0.07" />
+      <rect x="-0.05" y="-0.05" width="15.1" height="15.1" rx="0.5" fill="#e9e0ca" stroke="rgba(0,0,0,0.3)" strokeWidth="0.06" />
       {board}
-      <Tokens players={players} activeColor={activeColor} movable={movable} onToken={onToken} cellOf={sqCellOf} r={0.42} off={0.13} />
+      <Tokens players={players} activeColor={activeColor} movable={movable} onToken={onToken} cellOf={sqCellOf} r={0.4} off={0.13} />
     </svg>
   );
 }

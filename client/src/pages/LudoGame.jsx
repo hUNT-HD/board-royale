@@ -5,6 +5,7 @@ import Dice from '../components/ludo/Dice.jsx';
 import LudoSVG from '../components/ludo/LudoSVG.jsx';
 import ViewToggle from '../components/ViewToggle.jsx';
 import WinOverlay from '../components/WinOverlay.jsx';
+import Chat from '../components/Chat.jsx';
 import { sound } from '../sound.js';
 import { socket } from '../socket.js';
 import * as core from '../components/ludo/ludoCore.js';
@@ -124,6 +125,7 @@ function OnlineLudo({ room, onExit }) {
           : <LudoSVG mode={mode} players={snap.players} activeColor={active} movable={movable} onToken={onToken} />}
       </div>
 
+      <div className="space-y-4">
       <GlassPanel glow="rgba(123,97,255,0.3)" className="space-y-6">
         <div className="flex items-center gap-3">
           <span className="w-4 h-4 rounded-full" style={{ background: COLORS[active], boxShadow: `0 0 14px ${COLORS[active]}` }} />
@@ -152,6 +154,8 @@ function OnlineLudo({ room, onExit }) {
         <p className="text-white/40 text-xs">Room {room.code} · {members.length} players online</p>
         <button className="btn-neon btn-ghost w-full" onClick={onExit}>← Leave</button>
       </GlassPanel>
+        <Chat code={room.code} name={members.find((m) => m.id === socket.id)?.name || 'Player'} />
+      </div>
 
       <WinOverlay open={!!snap.winner && !closedWin} win={snap.winner === myColor}
         title={snap.winner === myColor ? 'You win!' : `${snap.winner ? snap.winner[0].toUpperCase() + snap.winner.slice(1) : ''} wins`}
@@ -161,33 +165,60 @@ function OnlineLudo({ room, onExit }) {
   );
 }
 
+const LUDO_ORDER = ['red', 'green', 'yellow', 'blue'];
+
 function SoloLudo() {
-  const [count, setCount] = useState(null);
-  if (!count) {
-    return (
-      <div className="max-w-md mx-auto mt-6">
-        <GlassPanel glow="rgba(123,97,255,0.3)">
-          <h2 className="font-display text-xl font-bold mb-1">How many players?</h2>
-          <p className="text-white/55 text-sm mb-5">You are <b>Red</b>; the rest are bots.</p>
-          <div className="grid grid-cols-5 gap-2">
-            {[2, 3, 4, 5, 6].map((n) => (
-              <button key={n} className="btn-neon btn-ghost py-3" onClick={() => setCount(n)}>{n}</button>
-            ))}
-          </div>
-          <p className="text-white/40 text-xs mt-4">2–4 → classic square board · 5–6 → hexagonal board</p>
-        </GlassPanel>
-      </div>
-    );
-  }
-  return <Game count={count} key={count} onExit={() => setCount(null)} />;
+  const [config, setConfig] = useState(null); // { color, count }
+  if (!config) return <LudoSetup onStart={setConfig} />;
+  return <Game config={config} key={`${config.color}-${config.count}`} onExit={() => setConfig(null)} />;
 }
 
-function Game({ count, onExit }) {
-  const hex = count >= 5;
-  const mode = hex ? 'hex' : 'square';
-  const COLORS = hex ? HEXC : HEX;
+function LudoSetup({ onStart }) {
+  const [color, setColor] = useState('red');
+  const [count, setCount] = useState(4);
+  return (
+    <div className="max-w-md mx-auto mt-6">
+      <GlassPanel glow="rgba(123,97,255,0.3)" className="space-y-5">
+        <h2 className="font-display text-xl font-bold">Solo vs bots</h2>
+        <div>
+          <div className="text-sm text-white/70 mb-2">Choose your colour</div>
+          <div className="grid grid-cols-4 gap-2">
+            {LUDO_ORDER.map((c) => (
+              <button key={c} onClick={() => setColor(c)}
+                className="py-3 rounded-xl capitalize text-sm font-bold transition"
+                style={{
+                  background: HEX[c], color: '#16161c',
+                  outline: color === c ? '3px solid #fff' : '3px solid transparent',
+                  transform: color === c ? 'scale(1.05)' : 'none',
+                  boxShadow: color === c ? `0 0 18px ${HEX[c]}` : 'none',
+                }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-white/70 mb-2">Players</div>
+          <div className="grid grid-cols-3 gap-2">
+            {[2, 3, 4].map((n) => (
+              <button key={n} onClick={() => setCount(n)} className={`view-toggle-btn ${count === n ? 'active' : ''}`}>{n}</button>
+            ))}
+          </div>
+        </div>
+        <button className="btn-neon w-full" onClick={() => onStart({ color, count })}>▶ Start game</button>
+      </GlassPanel>
+    </div>
+  );
+}
 
-  const gameRef = useRef(core.createGame(mode, SEATS[count]));
+function Game({ config, onExit }) {
+  const mode = 'square';
+  const COLORS = HEX;
+  const myColor = config.color;
+  const colors = useMemo(() => {
+    const rest = LUDO_ORDER.filter((c) => c !== myColor);
+    return [myColor, ...rest].slice(0, config.count);
+  }, [config]); // eslint-disable-line
+
+  const gameRef = useRef(core.createGame(mode, colors));
   const [view, setView] = useState('2D');
   const [tick, force] = useState(0);
   const [dice, setDice] = useState(null);
@@ -199,11 +230,11 @@ function Game({ count, onExit }) {
 
   const g = gameRef.current;
   const active = g.players[g.turn].color;
-  const myTurn = active === 'red' && !g.winner;
+  const myTurn = active === myColor && !g.winner;
 
   const movable = useMemo(() => {
     if (!myTurn || g.phase !== core.PHASE.MOVE) return new Set();
-    return new Set(g.validMoves.map((m) => `red:${m.tokenId}`));
+    return new Set(g.validMoves.map((m) => `${myColor}:${m.tokenId}`));
   }, [tick, myTurn, g.phase]); // eslint-disable-line
 
   const announce = (r) => {
@@ -301,7 +332,7 @@ function Game({ count, onExit }) {
             <div key={p.color} className="flex items-center gap-2 text-sm">
               <span className="w-3 h-3 rounded-full"
                 style={{ background: COLORS[p.color], boxShadow: `0 0 8px ${COLORS[p.color]}` }} />
-              <span className="capitalize flex-1">{p.color}{p.color === 'red' ? ' (you)' : ''}</span>
+              <span className="capitalize flex-1">{p.color}{p.color === myColor ? ' (you)' : ''}</span>
               <span className="text-white/50">🏠 {p.finished}/4</span>
             </div>
           ))}
@@ -313,9 +344,9 @@ function Game({ count, onExit }) {
 
       <WinOverlay
         open={!!g.winner && !closedWin}
-        win={g.winner === 'red'}
-        title={g.winner === 'red' ? 'You win!' : `${g.winner ? g.winner[0].toUpperCase() + g.winner.slice(1) : ''} wins`}
-        subtitle={g.winner === 'red' ? 'All four tokens home! 🏆' : 'Better luck next round!'}
+        win={g.winner === myColor}
+        title={g.winner === myColor ? 'You win!' : `${g.winner ? g.winner[0].toUpperCase() + g.winner.slice(1) : ''} wins`}
+        subtitle={g.winner === myColor ? 'All four tokens home! 🏆' : 'Better luck next round!'}
         onPlayAgain={onExit}
         onClose={() => setClosedWin(true)}
       />

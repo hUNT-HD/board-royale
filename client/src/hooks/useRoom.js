@@ -56,5 +56,11 @@ export function useRoom(game) {
     if (res.error) setError(res.error);
   }, [room]);
 
-  return { room, error, busy, connected, create, join, start, setError };
+  const pickColor = useCallback(async (color) => {
+    setError(null);
+    const res = await emitAck('room:pickColor', { code: room?.code, color });
+    if (res.error) setError(res.error);
+  }, [room]);
+
+  return { room, error, busy, connected, create, join, start, pickColor, setError };
 }

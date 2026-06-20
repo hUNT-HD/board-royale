@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import GlassPanel from './GlassPanel.jsx';
+import Chat from './Chat.jsx';
 import { useRoom } from '../hooks/useRoom.js';
+import { socket } from '../socket.js';
+
+const LUDO_COLORS = ['red', 'green', 'yellow', 'blue'];
 
 /**
  * Reusable pre-game lobby. Handles: Solo vs AI, Create room, Join room, and the
@@ -8,13 +12,15 @@ import { useRoom } from '../hooks/useRoom.js';
  *   mode: 'solo' | 'online'
  */
 export default function Lobby({ game, accent, minPlayers = 2, children, onPlay }) {
-  const { room, error, busy, connected, create, join, start } = useRoom(game);
+  const { room, error, busy, connected, create, join, start, pickColor } = useRoom(game);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [view, setView] = useState('menu'); // menu | host | guest
 
   const isHost = room && room.members[0]?.id === room.hostId;
   const enough = room && room.members.length >= minPlayers;
+  const takenColors = new Set((room?.members || []).filter((m) => m.id !== socket.id).map((m) => m.color));
+  const myMember = (room?.members || []).find((m) => m.id === socket.id);
 
   if (room?.started) { onPlay?.({ mode: 'online', room }); }
 
@@ -88,6 +94,27 @@ export default function Lobby({ game, accent, minPlayers = 2, children, onPlay }
               </p>
             </div>
 
+            {game === 'ludo' && (
+              <div>
+                <div className="text-sm text-white/70 mb-2">Your colour <span className="text-white/40">(taken ones are locked)</span></div>
+                <div className="grid grid-cols-4 gap-2">
+                  {LUDO_COLORS.map((c) => {
+                    const taken = takenColors.has(c);
+                    const mine = myMember?.color === c;
+                    return (
+                      <button key={c} disabled={taken} onClick={() => pickColor(c)}
+                        className="py-3 rounded-xl capitalize text-xs font-bold transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{
+                          background: `var(--${c})`, color: '#16161c',
+                          outline: mine ? '3px solid #fff' : '3px solid transparent',
+                          transform: mine ? 'scale(1.05)' : 'none',
+                        }}>{taken ? '🔒' : c}</button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {isHost ? (
               <button className="btn-neon w-full disabled:opacity-40"
                 disabled={!enough} onClick={start}>
@@ -102,6 +129,10 @@ export default function Lobby({ game, accent, minPlayers = 2, children, onPlay }
         {error && <p className="text-rose-400 text-sm mt-4 text-center">{error}</p>}
         {children}
       </GlassPanel>
+
+      {room && (view === 'host' || view === 'guest') && (
+        <div className="mt-4"><Chat code={room.code} name={myMember?.name || name || 'Player'} /></div>
+      )}
     </div>
   );
 }

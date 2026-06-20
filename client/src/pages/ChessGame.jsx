@@ -4,6 +4,7 @@ import GlassPanel from '../components/GlassPanel.jsx';
 import ChessBoard from '../components/chess/ChessBoard.jsx';
 import ViewToggle from '../components/ViewToggle.jsx';
 import WinOverlay from '../components/WinOverlay.jsx';
+import Chat from '../components/Chat.jsx';
 import { useChess } from '../components/chess/useChess.js';
 import { useStockfish } from '../components/chess/useStockfish.js';
 import { sound } from '../sound.js';
@@ -158,6 +159,7 @@ function ChessTable({ session, config, onNewGame }) {
               lastMove={chess.lastMove} checkSquare={chess.checkSquare} />}
       </div>
 
+      <div className="space-y-4">
       <GlassPanel glow="rgba(244,213,141,0.3)" className="space-y-5">
         <h2 className="font-display text-xl font-bold">
           {solo ? 'Solo vs Stockfish' : `Room ${session.room.code}`}
@@ -211,6 +213,8 @@ function ChessTable({ session, config, onNewGame }) {
             : <button className="btn-neon btn-ghost flex-1" onClick={() => chess.reset()}>↺ Reset</button>}
         </div>
       </GlassPanel>
+        {!solo && <Chat code={session.room.code} name={session.room?.members.find((m) => m.id === socket.id)?.name || 'Player'} />}
+      </div>
 
       <WinOverlay
         open={chess.isOver && !closed}
