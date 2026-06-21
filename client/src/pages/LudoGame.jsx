@@ -48,7 +48,7 @@ function OnlineLudo({ room, onExit }) {
   const members = useMemo(() => [...room.members].sort((a, b) => a.seat - b.seat), [room]);
   const colors = members.map((m) => m.color);
   const mode = modeFor(colors.length);
-  const COLORS = mode === 'hex' ? HEXC : HEX;
+  const COLORS = mode === 'square' ? HEX : HEXC;
   const mySeat = members.find((m) => m.id === socket.id)?.seat ?? 0;
   const myColor = colors[mySeat];
   const amHost = socket.id === room.hostId;
@@ -217,7 +217,7 @@ function LudoSetup({ onStart }) {
 
 function Game({ config, onExit }) {
   const mode = modeFor(config.count);
-  const COLORS = mode === 'hex' ? HEXC : HEX;
+  const COLORS = mode === 'square' ? HEX : HEXC;
   const myColor = config.color;
   const colors = useMemo(() => {
     const order = paletteFor(config.count);
