@@ -74,6 +74,12 @@ const CONFIG = {
     ringMax: 77,                       // enters home AFTER index 77 (= start - 1)
     starts: { blue: 0, yellow: 13, purple: 26, red: 39, green: 52, orange: 65 },
   },
+  pent: {
+    // 5-player pentagonal board: 65-step ring (5 arms × 13)
+    track: 65,
+    ringMax: 64,
+    starts: { blue: 0, orange: 13, green: 26, red: 39, yellow: 52 },
+  },
 };
 
 /** Immutable safe-zone set: every start cell + the star 8 steps ahead. */

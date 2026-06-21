@@ -23,14 +23,14 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
 
   // world position of a token for the active mode
   const worldOf = (color, rel, id) => {
-    if (mode === 'hex') { const p = hxCellOf(color, rel, id); return [(p.x - 500) * HS, (p.y - 500) * HS]; }
+    if (mode !== 'square') { const p = hxCellOf(color, rel, id); return [(p.x - 500) * HS, (p.y - 500) * HS]; }
     const [row, col] = sqCellOf(color, rel, id); return [col - 7, row - 7];
   };
 
   // build scene once per mount
   useEffect(() => {
     const stage = createStage(mountRef.current, {
-      camera: mode === 'hex' ? [0, 13, 13] : [0, 14, 14],
+      camera: mode !== 'square' ? [0, 13, 13] : [0, 14, 14],
       pick: (ray) => {
         const hit = ray.intersectObjects(tokens.children, true)
           .map((h) => { let o = h.object; while (o && !o.userData.token) o = o.parent; return o; })
@@ -41,7 +41,7 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
     const { scene } = stage;
 
     // ground plate
-    if (mode === 'hex') {
+    if (mode !== 'square') {
       const plate = new THREE.Mesh(
         new THREE.CylinderGeometry(8.6, 8.9, 0.4, 6),
         new THREE.MeshStandardMaterial({ color: 0x12131d, metalness: 0.4, roughness: 0.6 }));
@@ -63,7 +63,7 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
       m.position.set(x, y, z); m.rotation.y = ry; m.receiveShadow = true; scene.add(m); return m;
     };
 
-    if (mode === 'hex') {
+    if (mode !== 'square') {
       const SQ = CELL * 0.9;
       // six arms: white side-column track + coloured middle home lane (+ white tip)
       colorOfArm.forEach((color, a) => {
@@ -110,10 +110,10 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
     // ---- tokens ----
     const tokens = new THREE.Group(); scene.add(tokens);
     const tokenMap = new Map();
-    const COLORS = mode === 'hex' ? HEXC : HEX;
+    const COLORS = mode !== 'square' ? HEXC : HEX;
     cb.current.players.forEach((p) => p.tokens.forEach((t) => {
       const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(mode === 'hex' ? 0.4 : 0.38, 24, 20),
+      const body = new THREE.Mesh(new THREE.SphereGeometry(mode !== 'square' ? 0.4 : 0.38, 24, 20),
         new THREE.MeshStandardMaterial({ color: colorObj(COLORS[p.color]), emissive: colorObj(COLORS[p.color]),
           emissiveIntensity: 0.25, metalness: 0.1, roughness: 0.15 }));
       body.castShadow = true;

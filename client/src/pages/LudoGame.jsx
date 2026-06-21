@@ -47,7 +47,7 @@ const packLudo = (g) => ({
 function OnlineLudo({ room, onExit }) {
   const members = useMemo(() => [...room.members].sort((a, b) => a.seat - b.seat), [room]);
   const colors = members.map((m) => m.color);
-  const mode = colors.length >= 5 ? 'hex' : 'square';
+  const mode = modeFor(colors.length);
   const COLORS = mode === 'hex' ? HEXC : HEX;
   const mySeat = members.find((m) => m.id === socket.id)?.seat ?? 0;
   const myColor = colors[mySeat];
@@ -166,9 +166,10 @@ function OnlineLudo({ room, onExit }) {
 }
 
 const LUDO_ORDER = ['red', 'green', 'yellow', 'blue'];
-// Clockwise hexagon order (matches LudoEngine + visual reference). 5-player drops orange.
-const HEX_ORDER = ['blue', 'yellow', 'purple', 'red', 'green', 'orange'];
-const paletteFor = (count) => (count >= 5 ? HEX_ORDER : LUDO_ORDER);
+const PENT_ORDER = ['blue', 'orange', 'green', 'red', 'yellow'];           // 5-player pentagon
+const HEX_ORDER = ['blue', 'yellow', 'purple', 'red', 'green', 'orange'];  // 6-player hexagon
+const paletteFor = (count) => (count === 5 ? PENT_ORDER : count >= 6 ? HEX_ORDER : LUDO_ORDER);
+const modeFor = (count) => (count === 5 ? 'pent' : count >= 6 ? 'hex' : 'square');
 
 function SoloLudo() {
   const [config, setConfig] = useState(null); // { color, count }
@@ -186,20 +187,12 @@ function LudoSetup({ onStart }) {
       <GlassPanel glow="rgba(123,97,255,0.3)" className="space-y-5">
         <h2 className="font-display text-xl font-bold">Solo vs bots</h2>
         <div>
-          <div className="text-sm text-white/70 mb-2">Players</div>
+          <div className="text-sm text-white/70 mb-2">Players <span className="text-white/40">(5–6 = hexagonal board)</span></div>
           <div className="grid grid-cols-5 gap-2">
-            {[2, 3, 4].map((n) => (
+            {[2, 3, 4, 5, 6].map((n) => (
               <button key={n} onClick={() => setCount(n)} className={`view-toggle-btn ${count === n ? 'active' : ''}`}>{n}</button>
             ))}
-            {[5, 6].map((n) => (
-              <button key={n} disabled title="Coming soon"
-                className="view-toggle-btn relative opacity-40 cursor-not-allowed">
-                {n}
-                <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold bg-amber-400 text-black px-1 rounded-full leading-tight">SOON</span>
-              </button>
-            ))}
           </div>
-          <p className="text-white/35 text-xs mt-1.5">5–6 player hexagonal board — coming soon.</p>
         </div>
         <div>
           <div className="text-sm text-white/70 mb-2">Choose your colour</div>
@@ -223,7 +216,7 @@ function LudoSetup({ onStart }) {
 }
 
 function Game({ config, onExit }) {
-  const mode = config.count >= 5 ? 'hex' : 'square';
+  const mode = modeFor(config.count);
   const COLORS = mode === 'hex' ? HEXC : HEX;
   const myColor = config.color;
   const colors = useMemo(() => {

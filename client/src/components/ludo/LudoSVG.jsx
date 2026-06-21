@@ -8,7 +8,8 @@
  * fills — NOT per-cell CSS drop-shadow filters (those caused the jank/hang).
  */
 import { useMemo } from 'react';
-import LudoCanvas from './LudoCanvas.jsx';
+import LudoHexCanvas from './LudoHexCanvas.jsx';
+import LudoPentCanvas from './LudoPentCanvas.jsx';
 import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf } from './classic.js';
 import {
   ORDER6, HEXC, RING_CELLS, yardSlots, cellOf as hxCellOf, PLATE,
@@ -25,10 +26,9 @@ function Defs() {
         <stop offset="100%" stopColor="#0e0f18" />
       </radialGradient>
       <linearGradient id="frameWood" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#3e4257" />
-        <stop offset="42%" stopColor="#4d5269" />
-        <stop offset="56%" stopColor="#343849" />
-        <stop offset="100%" stopColor="#1a1c28" />
+        <stop offset="0%" stopColor="#23252f" />
+        <stop offset="50%" stopColor="#181a24" />
+        <stop offset="100%" stopColor="#0c0d14" />
       </linearGradient>
       <linearGradient id="frameSheen" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
@@ -58,22 +58,22 @@ function Defs() {
         </radialGradient>
       ))}
       <linearGradient id="cellGloss" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#525873" />
-        <stop offset="52%" stopColor="#424660" />
-        <stop offset="100%" stopColor="#363a50" />
+        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.13" />
+        <stop offset="40%" stopColor="#ffffff" stopOpacity="0.06" />
+        <stop offset="100%" stopColor="#ffffff" stopOpacity="0.03" />
       </linearGradient>
-      <radialGradient id="surface" cx="42%" cy="26%" r="95%">
-        <stop offset="0%" stopColor="#2c3044" />
-        <stop offset="68%" stopColor="#1f2230" />
-        <stop offset="100%" stopColor="#171924" />
+      <radialGradient id="surface" cx="42%" cy="30%" r="95%">
+        <stop offset="0%" stopColor="#1d1f30" />
+        <stop offset="70%" stopColor="#111321" />
+        <stop offset="100%" stopColor="#0a0a12" />
       </radialGradient>
-      <radialGradient id="vignette" cx="50%" cy="42%" r="70%">
-        <stop offset="55%" stopColor="#000000" stopOpacity="0" />
-        <stop offset="100%" stopColor="#000000" stopOpacity="0.3" />
+      <radialGradient id="vignette" cx="50%" cy="42%" r="72%">
+        <stop offset="52%" stopColor="#000000" stopOpacity="0" />
+        <stop offset="100%" stopColor="#000000" stopOpacity="0.34" />
       </radialGradient>
-      <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#3a3f57" />
-        <stop offset="100%" stopColor="#232636" />
+      <radialGradient id="centerGlow" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stopColor="rgba(0,190,255,0.55)" />
+        <stop offset="100%" stopColor="rgba(10,16,28,0.9)" />
       </radialGradient>
       <linearGradient id="goldStar" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#f7d774" />
@@ -134,33 +134,34 @@ function buildSquare(active) {
     const on = active.has(color);
     return (
       <g key={color} filter="url(#softSh)">
-        {/* slate glass panel with a colour rim */}
+        {/* dark-glass panel with a neon colour rim */}
         <rect x={cb + 0.1} y={rb + 0.1} width="5.8" height="5.8" rx="1.35"
-          fill="#272c3e" stroke={on ? HEX[color] : 'rgba(255,255,255,0.14)'} strokeWidth="0.15" />
-        <rect x={cb + 0.1} y={rb + 0.1} width="5.8" height="2.4" rx="1.35" fill="#ffffff" opacity="0.07" />
+          fill="rgba(255,255,255,0.05)" stroke={on ? HEX[color] : 'rgba(255,255,255,0.14)'} strokeWidth="0.16" />
+        <rect x={cb + 0.1} y={rb + 0.1} width="5.8" height="2.5" rx="1.35" fill="#ffffff" opacity="0.08" />
         <rect x={cb + 0.92} y={rb + 0.92} width="4.16" height="4.16" rx="0.85"
-          fill="#1d2130" stroke={on ? `${HEX[color]}66` : 'rgba(255,255,255,0.1)'} strokeWidth="0.06" />
+          fill="rgba(8,10,18,0.5)" stroke={on ? `${HEX[color]}66` : 'rgba(255,255,255,0.1)'} strokeWidth="0.06" />
         {BASE_SLOTS[color].map(([r, c], i) => (
           <g key={i}>
             <circle cx={c + 0.5} cy={r + 0.5} r="0.5" fill={on ? `${HEX[color]}26` : 'transparent'} />
-            <circle cx={c + 0.5} cy={r + 0.5} r="0.4" fill="#161a28"
+            <circle cx={c + 0.5} cy={r + 0.5} r="0.4" fill="rgba(255,255,255,0.05)"
               stroke={on ? HEX[color] : 'rgba(255,255,255,0.16)'} strokeWidth="0.05" />
           </g>
         ))}
       </g>
     );
   });
-  // centre — four colour triangles meeting at a glossy gold emblem
+  // centre — four colour triangles meeting at a glassy neon hub
   const tri = [['green', '6,6 9,6 7.5,7.5'], ['yellow', '9,6 9,9 7.5,7.5'], ['blue', '9,9 6,9 7.5,7.5'], ['red', '6,9 6,6 7.5,7.5']]
     .map(([color, pts]) => (
-      <polygon key={color} points={pts} fill={active.has(color) ? `url(#base-${color})` : '#272c3e'}
+      <polygon key={color} points={pts} fill={active.has(color) ? `url(#base-${color})` : 'rgba(255,255,255,0.05)'}
         stroke="rgba(255,255,255,0.2)" strokeWidth="0.05" />
     ));
   const emblem = (
     <g filter="url(#softSh)">
-      <circle cx="7.5" cy="7.5" r="0.95" fill="url(#centerGlow)" stroke="rgba(0,0,0,0.28)" strokeWidth="0.07" />
-      <circle cx="7.5" cy="7.5" r="0.95" fill="none" stroke="url(#goldStar)" strokeWidth="0.1" opacity="0.7" />
-      <text x="7.5" y="7.86" fontSize="0.95" textAnchor="middle" fill="url(#goldStar)" stroke="rgba(120,80,20,0.4)" strokeWidth="0.02">★</text>
+      <circle cx="7.5" cy="7.5" r="1.35" fill="url(#centerGlow)" />
+      <circle cx="7.5" cy="7.5" r="0.92" fill="rgba(8,14,26,0.6)" stroke="rgba(120,220,255,0.6)" strokeWidth="0.08" />
+      <ellipse cx="7.32" cy="7.22" rx="0.4" ry="0.22" fill="rgba(255,255,255,0.35)" />
+      <circle cx="7.5" cy="7.5" r="0.22" fill="#ffffff" />
     </g>
   );
   return <>{cells}{tri}{bases}{emblem}</>;
@@ -173,14 +174,11 @@ function SquareSVG({ players, activeColor, movable, onToken }) {
     <svg className="ludo-svg" viewBox="-0.85 -0.85 16.7 16.7" role="img" aria-label="Ludo board">
       <Defs />
       <rect x="-0.85" y="-0.85" width="16.7" height="16.7" rx="1.25" fill="url(#boardBg)" />
-      {/* polished wood frame + sheen */}
-      <rect x="-0.64" y="-0.64" width="16.28" height="16.28" rx="1.05" fill="url(#frameWood)" stroke="#241808" strokeWidth="0.13" />
+      {/* dark-glass frame + top sheen + light glass edge */}
+      <rect x="-0.64" y="-0.64" width="16.28" height="16.28" rx="1.05" fill="url(#frameWood)" stroke="rgba(255,255,255,0.14)" strokeWidth="0.09" />
       <rect x="-0.64" y="-0.64" width="16.28" height="16.28" rx="1.05" fill="url(#frameSheen)" pointerEvents="none" />
-      {/* gold trim ring */}
-      <rect x="-0.2" y="-0.2" width="15.4" height="15.4" rx="0.7" fill="none" stroke="#dcb65f" strokeWidth="0.09" opacity="0.9" />
-      <rect x="-0.2" y="-0.2" width="15.4" height="15.4" rx="0.7" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="0.03" />
-      {/* cream play surface */}
-      <rect x="-0.08" y="-0.08" width="15.16" height="15.16" rx="0.55" fill="url(#surface)" stroke="rgba(0,0,0,0.4)" strokeWidth="0.07" />
+      {/* dark-glass play surface */}
+      <rect x="-0.08" y="-0.08" width="15.16" height="15.16" rx="0.55" fill="url(#surface)" stroke="rgba(255,255,255,0.1)" strokeWidth="0.06" />
       {board}
       <Tokens players={players} activeColor={activeColor} movable={movable} onToken={onToken} cellOf={sqCellOf} r={0.4} off={0.13} />
       <rect x="-0.08" y="-0.08" width="15.16" height="15.16" rx="0.55" fill="url(#vignette)" pointerEvents="none" />
@@ -278,28 +276,28 @@ function Tokens({ players, activeColor, movable, onToken, cellOf, r, off }) {
           const cx = pos.x + (t.rel >= 0 ? (t.id - 1.5) * off : 0);
           const cy = pos.y;
           const canMove = movable.has(`${p.color}:${t.id}`);
-          const oR = r * 0.84, ocy = cy - r * 0.16;   // glossy orb radius + centre
-          const hex = HEX[p.color] || HEXC[p.color];
+          const hcy = cy - r * 0.45, hex = HEX[p.color] || HEXC[p.color], stroke = canMove ? '#ffffff' : 'rgba(22,22,38,0.85)';
+          const whitePoint = `${cx - r * 0.55},${hcy + r * 0.55} ${cx + r * 0.55},${hcy + r * 0.55} ${cx},${hcy + r * 1.5}`;
+          const innerPoint = `${cx - r * 0.36},${hcy + r * 0.5} ${cx + r * 0.36},${hcy + r * 0.5} ${cx},${hcy + r * 1.2}`;
           return (
             <g key={`${p.color}-${t.id}`} className={`svg-token ${canMove ? 'move' : ''}`}
               onClick={() => canMove && onToken?.(p.color, t.id)}>
-              {/* soft cast shadow */}
-              <ellipse cx={cx} cy={cy + r * 0.98} rx={r * 0.86} ry={r * 0.24} fill="rgba(0,0,0,0.38)" />
-              {/* glow halo — strong when movable, faint always for premium pop */}
-              <circle cx={cx} cy={ocy} r={r * (canMove ? 1.65 : 1.2)} fill={`url(#glow-${p.color})`} opacity={canMove ? 0.95 : 0.42} />
-              {/* dark base foot the orb rests on */}
-              <ellipse cx={cx} cy={cy + r * 0.72} rx={r * 0.5} ry={r * 0.18} fill="#0e1019" />
-              <ellipse cx={cx} cy={cy + r * 0.69} rx={r * 0.5} ry={r * 0.16} fill="none" stroke={hex} strokeWidth={r * 0.05} opacity="0.6" />
-              {/* glossy glass orb */}
-              <circle cx={cx} cy={ocy} r={oR} fill={`url(#gr-${p.color})`}
-                stroke={p.color === activeColor ? '#fff' : 'rgba(255,255,255,0.8)'} strokeWidth={r * 0.07} />
-              {/* reflected light at the bottom (glass feel) */}
-              <path d={`M ${cx - oR * 0.62} ${ocy + oR * 0.5} A ${oR * 0.85} ${oR * 0.85} 0 0 0 ${cx + oR * 0.62} ${ocy + oR * 0.5}`}
-                fill="none" stroke={hex} strokeWidth={r * 0.1} strokeLinecap="round" opacity="0.55" />
-              {/* crisp specular highlight + sparkle */}
-              <ellipse cx={cx - oR * 0.34} cy={ocy - oR * 0.4} rx={oR * 0.34} ry={oR * 0.22} fill="rgba(255,255,255,0.98)"
-                transform={`rotate(-28 ${cx - oR * 0.34} ${ocy - oR * 0.4})`} />
-              <circle cx={cx + oR * 0.34} cy={ocy + oR * 0.06} r={oR * 0.1} fill="rgba(255,255,255,0.65)" />
+              {/* ground shadow */}
+              <ellipse cx={cx} cy={cy + r * 0.72} rx={r * 0.88} ry={r * 0.3} fill="rgba(0,0,0,0.32)" />
+              {/* glow halo */}
+              <circle cx={cx} cy={hcy} r={r * (canMove ? 1.9 : 1.35)} fill={`url(#glow-${p.color})`} opacity={canMove ? 0.95 : 0.4} />
+              {/* white pin (head + point) */}
+              <polygon points={whitePoint} fill="#ffffff" />
+              <circle cx={cx} cy={hcy} r={r} fill="#ffffff" />
+              <path d={`M ${cx - r * 0.55} ${hcy + r * 0.5} L ${cx} ${hcy + r * 1.5} L ${cx + r * 0.55} ${hcy + r * 0.5}`}
+                fill="none" stroke={stroke} strokeWidth={r * 0.14} strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx={cx} cy={hcy} r={r} fill="none" stroke={stroke} strokeWidth={r * 0.13} />
+              {/* glossy colour sphere + coloured point */}
+              <circle cx={cx} cy={hcy} r={r * 0.74} fill={`url(#gr-${p.color})`} />
+              <polygon points={innerPoint} fill={hex} />
+              {/* specular */}
+              <ellipse cx={cx - r * 0.26} cy={hcy - r * 0.3} rx={r * 0.24} ry={r * 0.15} fill="rgba(255,255,255,0.92)"
+                transform={`rotate(-28 ${cx - r * 0.26} ${hcy - r * 0.3})`} />
             </g>
           );
         })
@@ -309,6 +307,7 @@ function Tokens({ players, activeColor, movable, onToken, cellOf, r, off }) {
 }
 
 export default function LudoSVG({ mode, players = [], activeColor, movable = new Set(), onToken }) {
-  if (mode === 'hex') return <LudoCanvas players={players} activeColor={activeColor} movable={movable} onToken={onToken} />;
+  if (mode === 'pent') return <LudoPentCanvas players={players} activeColor={activeColor} movable={movable} onToken={onToken} />;
+  if (mode === 'hex') return <LudoHexCanvas players={players} activeColor={activeColor} movable={movable} onToken={onToken} />;
   return <SquareSVG players={players} activeColor={activeColor} movable={movable} onToken={onToken} />;
 }
