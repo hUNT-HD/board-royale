@@ -278,27 +278,32 @@ function Game({ config, onExit }) {
   };
 
   // bots: tick-driven so extra turns (6 / capture / home) never stall.
-  // The bot rolls the SAME animated die as the human, then moves only AFTER the
-  // tumble finishes — so you actually watch the bot roll.
+  // A `botBusy` ref guards the whole roll→move sequence so a stray re-render can
+  // never cancel an in-flight bot move and trigger a SECOND roll. The phase guard
+  // also blocks re-entry while a bot move is mid-flight (phase === MOVE).
+  const botTimer = useRef(null);
+  const innerTimer = useRef(null);
+  useEffect(() => () => { clearTimeout(botTimer.current); clearTimeout(innerTimer.current); }, []); // clear on unmount only
   useEffect(() => {
-    if (g.winner || myTurn) return;
-    let inner;
-    const t = setTimeout(() => {
+    if (g.winner || myTurn || g.phase !== core.PHASE.ROLL) return;
+    if (botTimer.current) return;            // a bot sequence is already running — don't double-roll
+    botTimer.current = setTimeout(() => {
       setRolling(true);
-      triggerRoll();                       // bot rolls — animate the die
+      triggerRoll();                         // bot rolls — animate the die
       sound.dice();
       const res = core.rollDice(g);
       setDice(res.dice);
-      inner = setTimeout(() => {            // wait for the roll animation to finish
+      innerTimer.current = setTimeout(() => { // move only after the tumble finishes
         setRolling(false);
         if (res.moves && res.moves.length) {
           const id = core.botChoose(g);
           if (id != null) { const m = core.moveToken(g, id); if (m.captured?.length) sound.capture(); else sound.token(); }
         }
+        botTimer.current = null;             // sequence complete — next turn may schedule
+        innerTimer.current = null;
         rerender();
       }, 900);
     }, 600);
-    return () => { clearTimeout(t); clearTimeout(inner); };
   }, [tick]); // eslint-disable-line
 
   // win celebration (once)
