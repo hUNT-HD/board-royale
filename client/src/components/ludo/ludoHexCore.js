@@ -60,7 +60,7 @@ export function buildGeometry(size) {
     for (let row = 0; row < 3; row++) for (let col = 0; col < 6; col++) {
       const p = cellCenter(a, row, col);
       const home = row === 1 && col < 5, start = row === 2 && col === 4, star = row === 0 && col === 1;
-      cells.push({ ...p, col, row, home, start, star });
+      cells.push({ ...p, col, row, home, start, star, rot: a * 60 });
     }
     return { color: c, arm: a, cells };
   });

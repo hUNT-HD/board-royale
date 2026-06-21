@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { createStage, THREE } from '../three/stage.js';
-import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf } from './classic.js';
-import { cell, colorOfArm, ROWS, CELL, baseRect, cellOf as hxCellOf, HEXC, ORDER6 } from './hexGeo.js';
+import { MAIN, HOME, START, HEX, cellOf as sqCellOf } from './classic.js';
+import * as HexC from './ludoHexCore.js';
+import * as PentC from './ludoPentCore.js';
 
 /* ---- square lookups ---- */
 const mainIdx = {}; MAIN.forEach(([r, c], i) => { mainIdx[`${r},${c}`] = i; });
@@ -10,27 +11,33 @@ const startColorAt = {}; Object.entries(START).forEach(([col, i]) => { const [r,
 const SQ_STAR = new Set([8, 21, 34, 47]);
 const sqBase = (r, c) => (r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8);
 const sqCenter = (r, c) => r >= 6 && r <= 8 && c >= 6 && c <= 8;
-const HS = 0.0155; // hex unit (0..1000 space) → world scale
 
-const colorObj = (hex) => new THREE.Color(hex);
+const HS = 0.16;                      // 0..100 core space → world units
 const TILE_H = 0.22;
+const colorObj = (hex) => new THREE.Color(hex);
+const coreOf = (mode) => (mode === 'pent' ? PentC : HexC);
 
 export default function LudoBoard3D({ mode, players = [], activeColor, movable = new Set(), onToken }) {
   const mountRef = useRef(null);
   const apiRef = useRef(null);
+  const geoRef = useRef(null);
   const cb = useRef({});
   cb.current = { players, activeColor, movable, onToken, mode };
 
-  // world position of a token for the active mode
   const worldOf = (color, rel, id) => {
-    if (mode !== 'square') { const p = hxCellOf(color, rel, id); return [(p.x - 500) * HS, (p.y - 500) * HS]; }
-    const [row, col] = sqCellOf(color, rel, id); return [col - 7, row - 7];
+    if (mode === 'square') { const [row, col] = sqCellOf(color, rel, id); return [col - 7, row - 7]; }
+    const { core, geo } = geoRef.current;
+    const p = core.tokenPos(geo, color, rel, id);
+    return [(p.x - 50) * HS, (p.y - 50) * HS];
   };
 
-  // build scene once per mount
   useEffect(() => {
+    const core = coreOf(mode);
+    const geo = mode === 'square' ? null : core.buildGeometry(100);
+    geoRef.current = { core, geo };
+
     const stage = createStage(mountRef.current, {
-      camera: mode !== 'square' ? [0, 13, 13] : [0, 14, 14],
+      camera: mode === 'square' ? [0, 14, 14] : [0, 13, 13],
       pick: (ray) => {
         const hit = ray.intersectObjects(tokens.children, true)
           .map((h) => { let o = h.object; while (o && !o.userData.token) o = o.parent; return o; })
@@ -39,20 +46,6 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
       },
     });
     const { scene } = stage;
-
-    // ground plate
-    if (mode !== 'square') {
-      const plate = new THREE.Mesh(
-        new THREE.CylinderGeometry(8.6, 8.9, 0.4, 6),
-        new THREE.MeshStandardMaterial({ color: 0x12131d, metalness: 0.4, roughness: 0.6 }));
-      plate.rotation.y = Math.PI / 6; plate.position.y = -0.2; plate.receiveShadow = true; scene.add(plate);
-    } else {
-      const plate = new THREE.Mesh(
-        new THREE.BoxGeometry(15.6, 0.4, 15.6),
-        new THREE.MeshStandardMaterial({ color: 0x12131d, metalness: 0.4, roughness: 0.6 }));
-      plate.position.y = -0.2; plate.receiveShadow = true; scene.add(plate);
-    }
-
     const active = new Set(cb.current.players.map((p) => p.color));
     const tileMat = (hex, glow = 0) => new THREE.MeshStandardMaterial({
       color: colorObj(hex), emissive: colorObj(hex), emissiveIntensity: glow,
@@ -64,29 +57,39 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
     };
 
     if (mode !== 'square') {
-      const SQ = CELL * 0.9;
-      // six arms: white side-column track + coloured middle home lane (+ white tip)
-      colorOfArm.forEach((color, a) => {
+      const sides = mode === 'pent' ? 5 : 6;
+      const w = (x, y) => [(x - 50) * HS, (y - 50) * HS];
+      // dark plate
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.5, 0.4, sides),
+        new THREE.MeshStandardMaterial({ color: 0x12131d, metalness: 0.4, roughness: 0.6 }));
+      plate.position.y = -0.2; plate.rotation.y = Math.PI / sides; plate.receiveShadow = true; scene.add(plate);
+
+      const SQ = geo.S * 0.9;
+      geo.arms.forEach(({ color, cells }) => {
         const on = active.has(color);
-        for (let r = 0; r < ROWS; r++) {
-          const cL = cell(a, r, -1), cR = cell(a, r, 1), cM = cell(a, r, 0);
-          const midHex = r < 5 ? (on ? HEXC[color] : '#3a3d4d') : '#e9ebf2';
-          addTile((cL.x - 500) * HS, (cL.y - 500) * HS, SQ * HS, SQ * HS, tileMat('#e9ebf2', 0), -cL.rot * Math.PI / 180);
-          addTile((cR.x - 500) * HS, (cR.y - 500) * HS, SQ * HS, SQ * HS, tileMat('#e9ebf2', 0), -cR.rot * Math.PI / 180);
-          addTile((cM.x - 500) * HS, (cM.y - 500) * HS, SQ * HS, SQ * HS, tileMat(midHex, r < 5 && on ? 0.45 : 0), -cM.rot * Math.PI / 180);
-        }
+        cells.forEach((c) => {
+          const [x, z] = w(c.x, c.y);
+          const isColor = c.home || c.start;
+          const hex = isColor ? (on ? core.HEXC[color] : '#3a3d4d') : '#e9ebf2';
+          addTile(x, z, SQ * HS, SQ * HS, tileMat(hex, isColor && on ? 0.45 : 0), -c.rot * Math.PI / 180);
+        });
       });
-      // wedge bases between the arms
-      ORDER6.forEach((color) => {
-        const on = active.has(color);
-        const b = baseRect(color);
-        const bm = new THREE.Mesh(new THREE.CylinderGeometry(b.size * HS * 0.55, b.size * HS * 0.55, 0.3, 28),
-          on ? tileMat(HEXC[color], 0.4) : new THREE.MeshStandardMaterial({ color: 0x20222e, roughness: 0.7, transparent: true, opacity: 0.5 }));
-        bm.position.set((b.cx - 500) * HS, 0.06, (b.cy - 500) * HS); scene.add(bm);
+      // coloured base discs
+      core.ORDER.forEach((color) => {
+        const b = geo.bases[color], on = active.has(color);
+        const cxx = (b.tri[0].x + b.tri[1].x + b.tri[2].x) / 3, cyy = (b.tri[0].y + b.tri[1].y + b.tri[2].y) / 3;
+        const [x, z] = w(cxx, cyy);
+        const bm = new THREE.Mesh(new THREE.CylinderGeometry(geo.S * 1.5 * HS, geo.S * 1.6 * HS, 0.28, 26),
+          on ? tileMat(core.HEXC[color], 0.4) : new THREE.MeshStandardMaterial({ color: 0x20222e, roughness: 0.7, transparent: true, opacity: 0.5 }));
+        bm.position.set(x, 0.05, z); scene.add(bm);
       });
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(132 * HS / Math.cos(Math.PI / 6), 132 * HS / Math.cos(Math.PI / 6), 0.3, 6),
-        new THREE.MeshStandardMaterial({ color: 0x191a26, metalness: 0.5, roughness: 0.5 }));
-      hub.rotation.y = Math.PI / 6; hub.position.y = 0.05; scene.add(hub);
+      // glowing centre hub
+      const cverts = geo.hex || geo.pent;
+      const hubR = Math.hypot(cverts[0].x - 50, cverts[0].y - 50) * HS;
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(hubR, hubR, 0.32, sides),
+        new THREE.MeshStandardMaterial({ color: 0x0b3a5c, emissive: 0x00a0d8, emissiveIntensity: 0.5, metalness: 0.4, roughness: 0.4 }));
+      hub.rotation.y = -Math.atan2(cverts[0].y - 50, cverts[0].x - 50) + Math.PI / 2;
+      hub.position.y = 0.06; scene.add(hub);
     } else {
       for (let r = 0; r < 15; r++) for (let c = 0; c < 15; c++) {
         let hex = null, glow = 0;
@@ -105,17 +108,19 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
         }
         addTile(c - 7, r - 7, 0.94, 0.94, tileMat(hex, glow));
       }
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(15.6, 0.4, 15.6),
+        new THREE.MeshStandardMaterial({ color: 0x12131d, metalness: 0.4, roughness: 0.6 }));
+      plate.position.y = -0.2; plate.receiveShadow = true; scene.add(plate);
     }
 
     // ---- tokens ----
     const tokens = new THREE.Group(); scene.add(tokens);
     const tokenMap = new Map();
-    const COLORS = mode !== 'square' ? HEXC : HEX;
+    const COLORS = mode === 'square' ? HEX : coreOf(mode).HEXC;
     cb.current.players.forEach((p) => p.tokens.forEach((t) => {
       const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(mode !== 'square' ? 0.4 : 0.38, 24, 20),
-        new THREE.MeshStandardMaterial({ color: colorObj(COLORS[p.color]), emissive: colorObj(COLORS[p.color]),
-          emissiveIntensity: 0.25, metalness: 0.1, roughness: 0.15 }));
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 24, 20),
+        new THREE.MeshStandardMaterial({ color: colorObj(COLORS[p.color]), emissive: colorObj(COLORS[p.color]), emissiveIntensity: 0.25, metalness: 0.1, roughness: 0.15 }));
       body.castShadow = true;
       const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 0.3, 16),
         new THREE.MeshStandardMaterial({ color: colorObj(COLORS[p.color]), metalness: 0.2, roughness: 0.4 }));
@@ -127,7 +132,6 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
       tokens.add(g); tokenMap.set(`${p.color}-${t.id}`, g);
     }));
 
-    // animation: tween token positions + pulse movable
     stage.onFrame((dt, time) => {
       tokenMap.forEach((g) => {
         g.position.lerp(g.userData.target, Math.min(1, dt * 8));
@@ -142,7 +146,6 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
     // eslint-disable-next-line
   }, [mode]);
 
-  // sync token targets + movable flags whenever state changes
   useEffect(() => {
     const api = apiRef.current; if (!api) return;
     cb.current.players.forEach((p) => p.tokens.forEach((t) => {
