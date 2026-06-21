@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 
 // Base rotation that brings each face to the FRONT of the cube.
+// Each value = the NEGATIVE of that face's CSS positioning rotation, so the
+// correct pip face ends up facing the viewer (fixes the 3↔4 swap).
+//   f-front=1(rotY0) f-right=2(rotY90) f-bottom=4(rotX-90) f-top=3(rotX90)
+//   f-left=5(rotY-90) f-back=6(rotY180)
 const BASE = {
-  1: [0, 0], 2: [0, -90], 3: [90, 0], 4: [-90, 0], 5: [0, 90], 6: [0, 180],
+  1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, -180],
 };
 const PIPS = {
   1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],

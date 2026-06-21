@@ -7,10 +7,10 @@
  * re-renders the ~16 token nodes, and glow comes from cheap radial-gradient
  * fills — NOT per-cell CSS drop-shadow filters (those caused the jank/hang).
  */
-import { useMemo } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import LudoHexCanvas from './LudoHexCanvas.jsx';
 import LudoPentCanvas from './LudoPentCanvas.jsx';
-import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf } from './classic.js';
+import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf, lerpCell as sqLerp } from './classic.js';
 import {
   ORDER6, HEXC, RING_CELLS, yardSlots, cellOf as hxCellOf, PLATE,
   CELL, ROWS, cell, colorOfArm, wedgeBase, CENTER_TRIS,
@@ -167,9 +167,44 @@ function buildSquare(active) {
   return <>{cells}{tri}{bases}{emblem}</>;
 }
 
+const SQ_SPEED = 0.011; // cells per ms
 function SquareSVG({ players, activeColor, movable, onToken }) {
   const active = useMemo(() => new Set(players.map((p) => p.color)), [players.map((p) => p.color).join()]); // eslint-disable-line
   const board = useMemo(() => buildSquare(active), [[...active].sort().join()]); // eslint-disable-line
+
+  // cell-by-cell token movement animation
+  const animRef = useRef(new Map());
+  const lastRef = useRef(0);
+  const [, force] = useState(0);
+  useEffect(() => {
+    let raf;
+    lastRef.current = performance.now();
+    const loop = (t) => {
+      const dt = Math.min(64, t - lastRef.current); lastRef.current = t;
+      let animating = false;
+      players.forEach((p) => p.tokens.forEach((tk) => {
+        const key = `${p.color}:${tk.id}`;
+        let cur = animRef.current.has(key) ? animRef.current.get(key) : tk.rel;
+        if (cur !== tk.rel) {
+          if (tk.rel < cur) cur = tk.rel;
+          else { cur = Math.min(tk.rel, cur + dt * SQ_SPEED); if (tk.rel - cur > 0.02) animating = true; else cur = tk.rel; }
+          animRef.current.set(key, cur);
+        }
+      }));
+      if (animating) { force((n) => n + 1); raf = requestAnimationFrame(loop); }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line
+  }, [players, activeColor, movable]);
+
+  const posMap = {};
+  players.forEach((p) => p.tokens.forEach((tk) => {
+    const key = `${p.color}:${tk.id}`;
+    const cur = animRef.current.has(key) ? animRef.current.get(key) : tk.rel;
+    posMap[key] = sqLerp(p.color, cur, tk.id);
+  }));
+
   return (
     <svg className="ludo-svg" viewBox="-0.85 -0.85 16.7 16.7" role="img" aria-label="Ludo board">
       <Defs />
@@ -180,7 +215,7 @@ function SquareSVG({ players, activeColor, movable, onToken }) {
       {/* dark-glass play surface */}
       <rect x="-0.08" y="-0.08" width="15.16" height="15.16" rx="0.55" fill="url(#surface)" stroke="rgba(255,255,255,0.1)" strokeWidth="0.06" />
       {board}
-      <Tokens players={players} activeColor={activeColor} movable={movable} onToken={onToken} cellOf={sqCellOf} r={0.4} off={0.13} />
+      <Tokens players={players} activeColor={activeColor} movable={movable} onToken={onToken} cellOf={sqCellOf} r={0.4} off={0.13} posMap={posMap} />
       <rect x="-0.08" y="-0.08" width="15.16" height="15.16" rx="0.55" fill="url(#vignette)" pointerEvents="none" />
     </svg>
   );
@@ -266,12 +301,13 @@ function HexSVG({ players, activeColor, movable, onToken }) {
 }
 
 /* ---------- shared 3-D-looking token layer (cheap glow, no filters) ---------- */
-function Tokens({ players, activeColor, movable, onToken, cellOf, r, off }) {
+function Tokens({ players, activeColor, movable, onToken, cellOf, r, off, posMap }) {
   return (
     <g>
       {players.map((p) =>
         p.tokens.map((t) => {
-          const raw = cellOf(p.color, t.rel, t.id);
+          const key = `${p.color}:${t.id}`;
+          const raw = (posMap && posMap[key]) || cellOf(p.color, t.rel, t.id);
           const pos = Array.isArray(raw) ? { x: raw[1] + 0.5, y: raw[0] + 0.5 } : raw;
           const cx = pos.x + (t.rel >= 0 ? (t.id - 1.5) * off : 0);
           const cy = pos.y;

@@ -201,12 +201,22 @@ export function drawGame(ctx, geo, state) {
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(geo.cx, geo.cy, 0.2 * S, 0, 7); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.2; rr(ctx, dx, dy, dS, dS, 0.4 * S); ctx.stroke();
 
-  // tokens
+  // tokens (animated position from state.tokenXY if provided, else the cell centre)
   (state.players || []).forEach((p) => p.tokens.forEach((t) => {
-    const pos = tokenPos(geo, p.color, t.rel, t.id);
-    const movable = state.movable && state.movable.has(`${p.color}:${t.id}`);
+    const key = `${p.color}:${t.id}`;
+    const pos = (state.tokenXY && state.tokenXY[key]) || tokenPos(geo, p.color, t.rel, t.id);
+    const movable = state.movable && state.movable.has(key);
     mapPin(ctx, pos.x, pos.y, HEXC[p.color], S, { glow: movable ? 0.9 : 0.32, sel: movable });
   }));
+}
+
+/** Pixel position for a fractional rel (interpolated cell-to-cell) — for movement animation. */
+export function lerpPos(geo, color, relF, id) {
+  if (relF <= -1) return tokenPos(geo, color, -1, id);
+  const a = Math.floor(relF), f = relF - a;
+  if (f < 0.001) return tokenPos(geo, color, a, id);
+  const pa = tokenPos(geo, color, a, id), pb = tokenPos(geo, color, a + 1, id);
+  return { x: pa.x + (pb.x - pa.x) * f, y: pa.y + (pb.y - pa.y) * f };
 }
 
 export function hitToken(geo, players, px, py) {

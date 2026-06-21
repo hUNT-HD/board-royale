@@ -278,16 +278,45 @@ export function nextTurn(state) {
   state.phase = PHASE.ROLL;
 }
 
-/** Priority bot: capture > finish > unlock on a 6 > advance furthest. */
+/**
+ * Smarter bot — weighs every legal move instead of always pushing the lead token:
+ *   capture an enemy ▸ unlock a new token (spread out) ▸ finish ▸ escape danger ▸
+ *   reach safety ▸ enter home stretch ▸ mild progress. A pinch of randomness keeps
+ *   it from looking robotic and repetitive.
+ */
 export function botChoose(state) {
   const moves = state.validMoves;
   if (!moves.length) return null;
+  const { cfg } = state;
+  const me = state.players[state.turn];
+
+  // every opponent token currently on the shared track
+  const oppGi = [];
+  for (const op of state.players) {
+    if (op.color === me.color) continue;
+    for (const ot of op.tokens) { const gi = globalIndex(cfg, op.color, ot.rel); if (gi !== null) oppGi.push(gi); }
+  }
+  // a cell is "in danger" if an opponent sits 1–6 steps behind it and it isn't safe
+  const danger = (gi) => gi !== null && !cfg.safe.has(gi)
+    && oppGi.some((o) => { const d = (gi - o + cfg.track) % cfg.track; return d >= 1 && d <= 6; });
+
+  // how many of my tokens are already out of base (in play)
+  const out = me.tokens.filter((t) => t.rel >= 0 && t.rel < cfg.finish).length;
+
   let best = moves[0], score = -Infinity;
   for (const m of moves) {
-    let s = m.to;
-    if (m.willCapture) s += 600;
-    if (m.willFinish) s += 1000;
-    if (m.from === -1) s += 60;
+    const toGi = m.to <= cfg.ringMax ? (cfg.starts[me.color] + m.to) % cfg.track : null;
+    const fromGi = m.from >= 0 ? globalIndex(cfg, me.color, m.from) : null;
+    let s = 0;
+    if (m.willCapture) s += 1000;                          // send an enemy home
+    if (m.from === -1) s += out <= 1 ? 600 : 380;          // get tokens out — don't play just one
+    if (m.willFinish) s += 650;                            // bring a token home
+    if (danger(fromGi)) s += 220;                          // escape a token under threat
+    if (toGi !== null && cfg.safe.has(toGi)) s += 130;     // land on a safe star
+    if (danger(toGi)) s -= 230;                            // don't walk into a capture
+    if (m.to > cfg.ringMax) s += 90;                       // slip into the home stretch
+    s += m.to * 0.4;                                       // gentle forward progress
+    s += Math.random() * 12;                               // anti-robotic variety
     if (s > score) { score = s; best = m; }
   }
   return best.tokenId;

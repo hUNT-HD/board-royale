@@ -63,6 +63,16 @@ export function cellOf(color, rel, tokenId) {
   return CENTER;
 }
 
+/** Interpolated {x,y} for a fractional rel — cell-by-cell movement animation. */
+export function lerpCell(color, relF, id) {
+  const pt = (rel) => { const rc = cellOf(color, rel, id); return { x: rc[1] + 0.5, y: rc[0] + 0.5 }; };
+  if (relF <= -1) return pt(-1);
+  const a = Math.floor(relF), f = relF - a;
+  if (f < 0.001) return pt(a);
+  const pa = pt(a), pb = pt(a + 1);
+  return { x: pa.x + (pb.x - pa.x) * f, y: pa.y + (pb.y - pa.y) * f };
+}
+
 export function createGame(colors = ORDER) {
   return {
     players: colors.map((color, seat) => ({

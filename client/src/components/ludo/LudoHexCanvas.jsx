@@ -1,55 +1,67 @@
 import { useEffect, useRef } from 'react';
-import { ORDER, buildGeometry, drawGame, hitToken } from './ludoHexCore.js';
+import { ORDER, buildGeometry, drawGame, hitToken, lerpPos } from './ludoHexCore.js';
 
-/**
- * LudoHexCanvas — HTML5 <canvas> renderer for the 6-player hexagonal board
- * (radiating arms + triangular bases + map-pin pawns). Same props as the other
- * boards. Inactive colours (not in `players`) render frosted (ghost).
- */
+const SPEED = 0.011;   // cells per ms (≈ 90ms per cell → a 6 takes ~0.5s)
+
+/** LudoHexCanvas — 6-player hexagonal board with cell-by-cell token movement. */
 export default function LudoHexCanvas({ players = [], activeColor, movable = new Set(), onToken }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const geoRef = useRef(null);
   const sizeRef = useRef(0);
   const stateRef = useRef({});
+  const animRef = useRef(new Map());   // tokenKey -> current (animated) float rel
+  const lastRef = useRef(0);
 
   const present = new Set(players.map((p) => p.color));
   const ghosts = new Set(ORDER.filter((c) => !present.has(c)));
   stateRef.current = { players, active: activeColor, movable, ghosts };
 
-  const draw = (time = 0) => {
+  const draw = (time) => {
     const canvas = canvasRef.current, geo = geoRef.current;
-    if (!canvas || !geo) return;
-    drawGame(canvas.getContext('2d'), geo, { ...stateRef.current, time });
+    if (!canvas || !geo) return false;
+    const dt = Math.min(64, time - lastRef.current); lastRef.current = time;
+    const tokenXY = {}; let animating = false;
+    stateRef.current.players.forEach((p) => p.tokens.forEach((t) => {
+      const key = `${p.color}:${t.id}`;
+      let cur = animRef.current.has(key) ? animRef.current.get(key) : t.rel;
+      if (cur !== t.rel) {
+        if (t.rel < cur) cur = t.rel;                              // sent home / reset → snap
+        else { cur = Math.min(t.rel, cur + dt * SPEED); if (t.rel - cur > 0.02) animating = true; else cur = t.rel; }
+      }
+      animRef.current.set(key, cur);
+      tokenXY[key] = lerpPos(geo, p.color, cur, t.id);
+    }));
+    drawGame(canvas.getContext('2d'), geo, { ...stateRef.current, time, tokenXY });
+    return animating;
   };
 
   useEffect(() => {
     const canvas = canvasRef.current, wrap = wrapRef.current;
     const resize = () => {
       const size = Math.max(260, Math.min(wrap.clientWidth, 560));
-      if (size === sizeRef.current) { draw(); return; }
+      if (size === sizeRef.current) return;
       sizeRef.current = size;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(size * dpr);
-      canvas.height = Math.round(size * dpr);
-      canvas.style.width = `${size}px`;
-      canvas.style.height = `${size}px`;
+      canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
+      canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
       canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
       geoRef.current = buildGeometry(size);
-      draw();
     };
-    const ro = new ResizeObserver(resize);
-    ro.observe(wrap);
-    resize();
+    const ro = new ResizeObserver(resize); ro.observe(wrap); resize();
     return () => ro.disconnect();
     // eslint-disable-next-line
   }, []);
 
+  // single animation loop — keeps running while a token is moving or can pulse
   useEffect(() => {
     let raf;
-    const animate = movable && movable.size > 0;
-    const loop = (t) => { draw(t); if (animate) raf = requestAnimationFrame(loop); };
-    loop(performance.now());
+    lastRef.current = performance.now();
+    const loop = (t) => {
+      const animating = draw(t);
+      if (animating || (movable && movable.size > 0)) raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
     return () => raf && cancelAnimationFrame(raf);
     // eslint-disable-next-line
   }, [players, activeColor, movable]);
@@ -63,8 +75,7 @@ export default function LudoHexCanvas({ players = [], activeColor, movable = new
 
   return (
     <div ref={wrapRef} className="ludo-canvas-wrap" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-      <canvas ref={canvasRef} onClick={handleClick}
-        role="img" aria-label="Hexagonal Ludo board"
+      <canvas ref={canvasRef} onClick={handleClick} role="img" aria-label="Hexagonal Ludo board"
         style={{ display: 'block', cursor: 'pointer', touchAction: 'manipulation', borderRadius: 16 }} />
     </div>
   );
