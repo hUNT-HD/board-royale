@@ -114,6 +114,7 @@ export function createGame(mode, colors) {
     phase: PHASE.ROLL,
     validMoves: [],
     winner: null,
+    ranking: [],          // finish order (1st, 2nd, …) — filled only as players complete
     lastEvent: null,
   };
 }
@@ -230,25 +231,36 @@ export function moveToken(state, tokenId) {
   token.rel = mv.to;
 
   let captured = [];
-  let finished = false;
+  let finished = false, podium = false;
   if (token.rel === cfg.finish) {
     finished = true;
     player.finished += 1;
-    if (player.finished === TOKENS) state.winner = player.color;
+    // a player who just brought ALL tokens home earns the next podium place
+    if (player.finished === TOKENS && !state.ranking.includes(player.color)) {
+      state.ranking.push(player.color);
+      podium = true;
+      // GAME OVER only once everyone but the last has finished
+      if (state.ranking.length >= state.players.length - 1) {
+        for (const pl of state.players) if (!state.ranking.includes(pl.color)) state.ranking.push(pl.color);
+        state.winner = state.ranking[0];
+      }
+    }
   } else {
     captured = checkCapture(state, player.color, globalIndex(cfg, player.color, token.rel));
   }
 
-  const extra = state.dice === 6 || captured.length > 0 || finished;
+  // bonus roll on a 6 / capture / finishing a token — but not once a player is fully done
+  const fullyDone = player.finished === TOKENS;
+  const extra = !fullyDone && (state.dice === 6 || captured.length > 0 || finished);
   state.dice = null;
   state.validMoves = [];
-  state.lastEvent = { captured, finished, extra };
+  state.lastEvent = { captured, finished, extra, podium };
 
-  if (state.winner) state.phase = PHASE.OVER;
+  if (state.winner) state.phase = PHASE.OVER;      // full game over (all ranked)
   else if (extra) state.phase = PHASE.ROLL;        // same player rolls again
   else nextTurn(state);                            // resets phase + sixStreak
 
-  return { captured, finished, extra };
+  return { captured, finished, extra, podium };
 }
 
 /** Advance to the next ACTIVE player that still has tokens to move (skips ghosts). */

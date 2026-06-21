@@ -5,6 +5,7 @@ import Dice from '../components/ludo/Dice.jsx';
 import LudoSVG from '../components/ludo/LudoSVG.jsx';
 import ViewToggle from '../components/ViewToggle.jsx';
 import WinOverlay from '../components/WinOverlay.jsx';
+import ResultsOverlay from '../components/ResultsOverlay.jsx';
 import Chat from '../components/Chat.jsx';
 import { sound } from '../sound.js';
 import { socket } from '../socket.js';
@@ -40,7 +41,7 @@ export default function LudoGame() {
 // compact, JSON-serializable snapshot the host broadcasts to other clients
 const packLudo = (g) => ({
   players: g.players.map((p) => ({ color: p.color, finished: p.finished, tokens: p.tokens.map((t) => ({ id: t.id, rel: t.rel })) })),
-  turn: g.turn, dice: g.dice, phase: g.phase, validMoves: g.validMoves, winner: g.winner,
+  turn: g.turn, dice: g.dice, phase: g.phase, validMoves: g.validMoves, winner: g.winner, ranking: g.ranking,
 });
 
 /* ----- Online Ludo: host runs the engine, others sync via the server relay ----- */
@@ -152,15 +153,16 @@ function OnlineLudo({ room, onExit }) {
         </div>
 
         <p className="text-white/40 text-xs">Room {room.code} · {members.length} players online</p>
-        <button className="btn-neon btn-ghost w-full" onClick={onExit}>← Leave</button>
+        <button className="btn-neon btn-ghost w-full disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={!snap.winner} title={snap.winner ? '' : 'You can leave once the game is over'}
+          onClick={onExit}>{snap.winner ? '← Leave' : '🔒 Game in progress'}</button>
       </GlassPanel>
         <Chat code={room.code} name={members.find((m) => m.id === socket.id)?.name || 'Player'} />
       </div>
 
-      <WinOverlay open={!!snap.winner && !closedWin} win={snap.winner === myColor}
-        title={snap.winner === myColor ? 'You win!' : `${snap.winner ? snap.winner[0].toUpperCase() + snap.winner.slice(1) : ''} wins`}
-        subtitle={snap.winner === myColor ? 'All four tokens home! 🏆' : 'Good game!'}
-        onClose={() => setClosedWin(true)} />
+      <ResultsOverlay open={!!snap.winner && !closedWin} ranking={snap.ranking || []} myColor={myColor}
+        colorsMap={COLORS} nameOf={(c) => members.find((m) => m.color === c)?.name || c}
+        onLeave={onExit} />
     </div>
   );
 }
@@ -348,13 +350,13 @@ function Game({ config, onExit }) {
         <p className="text-white/40 text-xs">Roll a 6 to leave base. Land on a rival (off a star) to send it home.</p>
       </GlassPanel>
 
-      <WinOverlay
+      <ResultsOverlay
         open={!!g.winner && !closedWin}
-        win={g.winner === myColor}
-        title={g.winner === myColor ? 'You win!' : `${g.winner ? g.winner[0].toUpperCase() + g.winner.slice(1) : ''} wins`}
-        subtitle={g.winner === myColor ? 'All four tokens home! 🏆' : 'Better luck next round!'}
+        ranking={g.ranking || []}
+        myColor={myColor}
+        colorsMap={COLORS}
         onPlayAgain={onExit}
-        onClose={() => setClosedWin(true)}
+        onLeave={onExit}
       />
     </div>
   );
