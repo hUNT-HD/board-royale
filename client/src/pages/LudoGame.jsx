@@ -8,7 +8,7 @@ import WinOverlay from '../components/WinOverlay.jsx';
 import Chat from '../components/Chat.jsx';
 import { sound } from '../sound.js';
 import { socket } from '../socket.js';
-import * as core from '../components/ludo/ludoCore.js';
+import * as core from '../components/ludo/LudoEngine.js';
 
 const LudoBoard3D = lazy(() => import('../components/ludo/LudoBoard3D.jsx'));
 import { HEX } from '../components/ludo/classic.js';
@@ -166,7 +166,8 @@ function OnlineLudo({ room, onExit }) {
 }
 
 const LUDO_ORDER = ['red', 'green', 'yellow', 'blue'];
-const HEX_ORDER = ['red', 'green', 'yellow', 'blue', 'purple', 'orange'];
+// Clockwise hexagon order (matches LudoEngine + visual reference). 5-player drops orange.
+const HEX_ORDER = ['blue', 'yellow', 'purple', 'red', 'green', 'orange'];
 const paletteFor = (count) => (count >= 5 ? HEX_ORDER : LUDO_ORDER);
 
 function SoloLudo() {
@@ -185,12 +186,20 @@ function LudoSetup({ onStart }) {
       <GlassPanel glow="rgba(123,97,255,0.3)" className="space-y-5">
         <h2 className="font-display text-xl font-bold">Solo vs bots</h2>
         <div>
-          <div className="text-sm text-white/70 mb-2">Players <span className="text-white/40">(5–6 = hexagonal board)</span></div>
+          <div className="text-sm text-white/70 mb-2">Players</div>
           <div className="grid grid-cols-5 gap-2">
-            {[2, 3, 4, 5, 6].map((n) => (
+            {[2, 3, 4].map((n) => (
               <button key={n} onClick={() => setCount(n)} className={`view-toggle-btn ${count === n ? 'active' : ''}`}>{n}</button>
             ))}
+            {[5, 6].map((n) => (
+              <button key={n} disabled title="Coming soon"
+                className="view-toggle-btn relative opacity-40 cursor-not-allowed">
+                {n}
+                <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold bg-amber-400 text-black px-1 rounded-full leading-tight">SOON</span>
+              </button>
+            ))}
           </div>
+          <p className="text-white/35 text-xs mt-1.5">5–6 player hexagonal board — coming soon.</p>
         </div>
         <div>
           <div className="text-sm text-white/70 mb-2">Choose your colour</div>

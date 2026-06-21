@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createStage, THREE } from '../three/stage.js';
 import { MAIN, HOME, START, HEX, BASE_SLOTS, cellOf as sqCellOf } from './classic.js';
-import { RING_CELLS, homeCells, baseRect, cellOf as hxCellOf, HEXC, ORDER6 } from './hexGeo.js';
+import { cell, colorOfArm, ROWS, CELL, baseRect, cellOf as hxCellOf, HEXC, ORDER6 } from './hexGeo.js';
 
 /* ---- square lookups ---- */
 const mainIdx = {}; MAIN.forEach(([r, c], i) => { mainIdx[`${r},${c}`] = i; });
@@ -10,7 +10,7 @@ const startColorAt = {}; Object.entries(START).forEach(([col, i]) => { const [r,
 const SQ_STAR = new Set([8, 21, 34, 47]);
 const sqBase = (r, c) => (r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8);
 const sqCenter = (r, c) => r >= 6 && r <= 8 && c >= 6 && c <= 8;
-const HS = 0.16; // hex unit → world scale
+const HS = 0.0155; // hex unit (0..1000 space) → world scale
 
 const colorObj = (hex) => new THREE.Color(hex);
 const TILE_H = 0.22;
@@ -23,7 +23,7 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
 
   // world position of a token for the active mode
   const worldOf = (color, rel, id) => {
-    if (mode === 'hex') { const p = hxCellOf(color, rel, id); return [(p.x - 50) * HS, (p.y - 50) * HS]; }
+    if (mode === 'hex') { const p = hxCellOf(color, rel, id); return [(p.x - 500) * HS, (p.y - 500) * HS]; }
     const [row, col] = sqCellOf(color, rel, id); return [col - 7, row - 7];
   };
 
@@ -64,22 +64,27 @@ export default function LudoBoard3D({ mode, players = [], activeColor, movable =
     };
 
     if (mode === 'hex') {
-      RING_CELLS.forEach((o) => {
-        const lit = o.startColor && active.has(o.startColor);
-        const hex = lit ? HEXC[o.startColor] : o.star ? '#cfd3e0' : '#e9ebf2';
-        addTile((o.cx - 50) * HS, (o.cy - 50) * HS, o.w * HS, o.h * HS,
-          tileMat(hex, lit ? 0.5 : 0), -o.angle * Math.PI / 180);
+      const SQ = CELL * 0.9;
+      // six arms: white side-column track + coloured middle home lane (+ white tip)
+      colorOfArm.forEach((color, a) => {
+        const on = active.has(color);
+        for (let r = 0; r < ROWS; r++) {
+          const cL = cell(a, r, -1), cR = cell(a, r, 1), cM = cell(a, r, 0);
+          const midHex = r < 5 ? (on ? HEXC[color] : '#3a3d4d') : '#e9ebf2';
+          addTile((cL.x - 500) * HS, (cL.y - 500) * HS, SQ * HS, SQ * HS, tileMat('#e9ebf2', 0), -cL.rot * Math.PI / 180);
+          addTile((cR.x - 500) * HS, (cR.y - 500) * HS, SQ * HS, SQ * HS, tileMat('#e9ebf2', 0), -cR.rot * Math.PI / 180);
+          addTile((cM.x - 500) * HS, (cM.y - 500) * HS, SQ * HS, SQ * HS, tileMat(midHex, r < 5 && on ? 0.45 : 0), -cM.rot * Math.PI / 180);
+        }
       });
+      // wedge bases between the arms
       ORDER6.forEach((color) => {
         const on = active.has(color);
-        homeCells(color).forEach((o) => addTile((o.cx - 50) * HS, (o.cy - 50) * HS, o.w * HS, o.h * HS,
-          on ? tileMat(HEXC[color], 0.45) : tileMat('#3a3d4d', 0), -o.angle * Math.PI / 180));
         const b = baseRect(color);
-        const bm = new THREE.Mesh(new THREE.BoxGeometry(b.size * HS, 0.35, b.size * HS),
+        const bm = new THREE.Mesh(new THREE.CylinderGeometry(b.size * HS * 0.55, b.size * HS * 0.55, 0.3, 28),
           on ? tileMat(HEXC[color], 0.4) : new THREE.MeshStandardMaterial({ color: 0x20222e, roughness: 0.7, transparent: true, opacity: 0.5 }));
-        bm.position.set((b.cx - 50) * HS, 0.06, (b.cy - 50) * HS); scene.add(bm);
+        bm.position.set((b.cx - 500) * HS, 0.06, (b.cy - 500) * HS); scene.add(bm);
       });
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(11 * HS / Math.cos(Math.PI / 6), 11 * HS / Math.cos(Math.PI / 6), 0.3, 6),
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(132 * HS / Math.cos(Math.PI / 6), 132 * HS / Math.cos(Math.PI / 6), 0.3, 6),
         new THREE.MeshStandardMaterial({ color: 0x191a26, metalness: 0.5, roughness: 0.5 }));
       hub.rotation.y = Math.PI / 6; hub.position.y = 0.05; scene.add(hub);
     } else {

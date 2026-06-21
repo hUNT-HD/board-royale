@@ -45,8 +45,10 @@ const CONFIG = {
     starts: { red: 0, green: 13, yellow: 26, blue: 39 },
   },
   hex: {
+    // start sits at each colour's own edge-mid (+7), so a token unlocks directly
+    // in front of its house and, after a full loop, turns into its own home lane.
     track: 78,
-    starts: { red: 0, green: 13, yellow: 26, blue: 39, purple: 52, orange: 65 },
+    starts: { red: 7, green: 20, yellow: 33, blue: 46, purple: 59, orange: 72 },
   },
 };
 
