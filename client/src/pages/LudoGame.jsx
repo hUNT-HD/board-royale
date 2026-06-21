@@ -246,7 +246,8 @@ function Game({ config, onExit }) {
   }, [tick, myTurn, g.phase]); // eslint-disable-line
 
   const announce = (r) => {
-    if (r.captured?.length) sound.capture(); else if (r.finished || r.to !== undefined) sound.token();
+    if (!r || r.error) return;                       // ignore guarded/no-op results
+    if (r.captured?.length) sound.capture(); else sound.token();
     setBanner(r.captured?.length ? '💥 Capture! Bonus roll'
       : r.finished ? '🏠 Home! Bonus roll'
       : r.extra ? '🎲 Rolled a 6 — roll again' : '');
@@ -263,7 +264,9 @@ function Game({ config, onExit }) {
       : res.autoPass ? 'No valid move — turn skipped' : '');
     setTimeout(() => {                      // only act after the roll is seen
       setRolling(false);
-      if (res.moves && res.moves.length === 1) announce(core.moveToken(g, res.moves[0].tokenId));
+      // auto-play a forced single move — but only if the player hasn't already tapped it
+      if (res.moves && res.moves.length === 1 && g.phase === core.PHASE.MOVE)
+        announce(core.moveToken(g, res.moves[0].tokenId));
       rerender();
     }, 850);
   };
@@ -279,13 +282,14 @@ function Game({ config, onExit }) {
   // tumble finishes — so you actually watch the bot roll.
   useEffect(() => {
     if (g.winner || myTurn) return;
+    let inner;
     const t = setTimeout(() => {
       setRolling(true);
       triggerRoll();                       // bot rolls — animate the die
       sound.dice();
       const res = core.rollDice(g);
       setDice(res.dice);
-      setTimeout(() => {                    // wait for the roll animation to finish
+      inner = setTimeout(() => {            // wait for the roll animation to finish
         setRolling(false);
         if (res.moves && res.moves.length) {
           const id = core.botChoose(g);
@@ -294,7 +298,7 @@ function Game({ config, onExit }) {
         rerender();
       }, 900);
     }, 600);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); clearTimeout(inner); };
   }, [tick]); // eslint-disable-line
 
   // win celebration (once)
